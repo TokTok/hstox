@@ -1,0 +1,16 @@
+cache:
+  - C:\tools\ghc
+
+install:
+  - choco install ghc -version 7.10.3 > NUL
+  - SET PATH=%PATH%;C:\tools\ghc\ghc-7.10.3\bin
+  - cabal update
+#  - cabal install --only-dependencies
+#  - cabal configure --enable-library-coverage
+
+build_script:
+  - echo cabal build || echo "Build failed"
+#  - tools/run-tests hstox
+#  - tools/run-tests toxcore
+#  - tools/build-docs
+#  - git diff --exit-code
