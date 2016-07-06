@@ -58,11 +58,6 @@ library
     , vector
   exposed-modules:
       Data.MessagePack
-      Data.MessagePack.Assoc
-      Data.MessagePack.Class
-      Data.MessagePack.Get
-      Data.MessagePack.Object
-      Data.MessagePack.Put
       Network.MessagePack.Client
       Network.MessagePack.Server
       Network.Tox
