@@ -3,7 +3,7 @@
 module Network.Tox.Crypto.KeyPairSpec where
 
 import           Control.Monad.IO.Class         (liftIO)
-import           Network.Tox.RPCTest            (runTest)
+import           Network.Tox.RPCTest
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -23,7 +23,6 @@ spec = do
   readShowSpec (Proxy :: Proxy KeyPair)
 
   describe "newKeyPair" $ do
-
     it "generates different key pairs on subsequent calls" $ runTest $ do
       kp1 <- KeyPair.newKeyPairC
       kp2 <- KeyPair.newKeyPairC
@@ -44,6 +43,9 @@ spec = do
       liftIO $ Sodium.encode pk `shouldNotBe` Sodium.encode sk
 
   describe "fromSecretKey" $ do
+    it "RPC equivalence" $
+      property $ \sk -> runTest $
+        equiv1 KeyPair.fromSecretKey KeyPair.fromSecretKeyC sk
 
     it "doesn't modify the secret key" $
       property $ \sk -> runTest $ do
