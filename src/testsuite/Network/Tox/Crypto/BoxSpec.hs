@@ -3,7 +3,7 @@
 module Network.Tox.Crypto.BoxSpec where
 
 import           Control.Monad.IO.Class         (liftIO)
-import           Network.Tox.RPCTest            (runTest)
+import           Network.Tox.RPCTest
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -15,6 +15,17 @@ import qualified Network.Tox.Crypto.KeyPair     as KeyPair
 
 spec :: Spec
 spec = do
+  describe "encrypt" $
+    it "RPC equivalence" $
+      property $ \combinedKey nonce plainText -> runTest $
+        equiv3 Box.encrypt Box.encryptC combinedKey nonce plainText
+
+  describe "decrypt" $
+    it "RPC equivalence" $
+      property $ \combinedKey nonce plainText -> runTest $ do
+        let cipherText = Box.encrypt combinedKey nonce plainText
+        equiv3 Box.decrypt Box.decryptC combinedKey nonce cipherText
+
   it "should decrypt its own encrypted data" $
     property $ \combinedKey nonce plainText -> runTest $ do
       cipherText <- Box.encryptC combinedKey nonce plainText
