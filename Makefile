@@ -5,9 +5,14 @@ CABAL_GT_1_22 := $(shell [ $(CABAL_VER_MAJOR) -gt 1 -o \( $(CABAL_VER_MAJOR) -eq
 
 ifeq ($(CABAL_GT_1_22),true)
 ENABLE_COVERAGE	= --enable-coverage
+DISABLE_PROFILING = --disable-profiling
 else
-ENABLE_COVERAGE	= --enable-library-coverage
+ENABLE_COVERAGE = --enable-library-coverage
+DISABLE_PROFILING =
 endif
+
+# Test flavour. See test/toxcore/Makefile for choices.
+TEST	:= vanilla
 
 SOURCES	:= $(shell find src test -name "*.*hs" -or -name "*.c" -or -name "*.h")
 
@@ -49,18 +54,18 @@ build: .build.stamp
 	cabal build
 	@touch $@
 
-dist/build/test-toxcore/test-toxcore: test/toxcore/test_main
+dist/build/test-toxcore/test-toxcore: test/toxcore/test_main-$(TEST)
 	mkdir -p $(@D)
 	cp $< $@
 
-test/toxcore/test_main: $(shell find test/toxcore -name "*.[ch]") test/toxcore/Makefile
+test/toxcore/test_main-$(TEST): $(shell find test/toxcore -name "*.[ch]") test/toxcore/Makefile
 	make -C $(@D) $(@F)
 
 configure: .configure.stamp
 .configure.stamp: .libsodium.stamp
 	cabal update
 	cabal install --enable-tests $(EXTRA_DIRS) --only-dependencies hstox.cabal
-	cabal configure --enable-tests $(EXTRA_DIRS) $(ENABLE_COVERAGE) --disable-profiling
+	cabal configure --enable-tests $(EXTRA_DIRS) $(ENABLE_COVERAGE) $(DISABLE_PROFILING)
 	@touch $@
 
 doc: $(DOCS)
