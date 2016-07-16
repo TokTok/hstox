@@ -2,7 +2,27 @@
 
 #include <DHT.h>
 
-METHOD(bin, Binary_decode, CipherText) { return pending; }
+METHOD(bin, Binary_decode, CipherText) {
+  uint64_t size = args.size;
+  uint64_t length = 0;
+  uint64_t tmp = 0;
+
+  if (size >= sizeof(uint64_t)) {
+    memcpy(&tmp, args.ptr, sizeof(uint64_t));
+    length = be64toh(tmp);
+  }
+
+  SUCCESS {
+    if (size >= sizeof(uint64_t) && size == length + sizeof(uint64_t)) {
+      msgpack_pack_bin(res, args.size - sizeof(uint64_t));
+      msgpack_pack_bin_body(res, (args.ptr + sizeof(uint64_t)),
+                            args.size - sizeof(uint64_t));
+    } else {
+      msgpack_pack_nil(res);
+    }
+  }
+  return 0;
+}
 
 METHOD(bin, Binary_decode, DhtPacket) { return pending; }
 
