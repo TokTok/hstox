@@ -1,5 +1,6 @@
 #include "methods.h"
 
+#include <DHT.h>
 
 METHOD (bin, Binary_encode, CipherText) { return pending; }
 METHOD (array, Binary_encode, DhtPacket) { return pending; }
@@ -30,7 +31,76 @@ METHOD (array, Binary_encode, KeyPair)
   return 0;
 }
 
-METHOD (array, Binary_encode, NodeInfo) { return pending; }
+#define PACKED_NODE_SIZE_IP6 (1 + SIZE_IP6 + sizeof(uint16_t) + crypto_box_PUBLICKEYBYTES)
+
+METHOD (array, Binary_encode, NodeInfo)
+{
+  CHECK_SIZE (args, 3);
+
+  CHECK_TYPE (args.ptr[0], MSGPACK_OBJECT_POSITIVE_INTEGER);                                    /* UDP = 0, TCP = 1 */
+  CHECK_TYPE (args.ptr[1], MSGPACK_OBJECT_ARRAY);                                               /* Socket           */
+  CHECK_SIZE (args.ptr[1].via.array, 2);                                                        /* IP and Port      */
+  CHECK_TYPE (args.ptr[1].via.array.ptr[0], MSGPACK_OBJECT_ARRAY);                              /* IP 4 & 6         */
+  CHECK_SIZE (args.ptr[1].via.array.ptr[0].via.array, 2);
+  CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[0], MSGPACK_OBJECT_POSITIVE_INTEGER);  /* IP 4             */
+  // CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[1], MSGPACK_OBJECT_ARRAY);             /* IP 6 */
+  // CHECK_SIZE (args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array, 4);
+  // CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array.ptr[0], MSGPACK_OBJECT_POSITIVE_INTEGER);
+  // CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array.ptr[1], MSGPACK_OBJECT_POSITIVE_INTEGER);
+  // CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array.ptr[2], MSGPACK_OBJECT_POSITIVE_INTEGER);
+  // CHECK_TYPE (args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array.ptr[3], MSGPACK_OBJECT_POSITIVE_INTEGER);
+  CHECK_TYPE (args.ptr[1].via.array.ptr[1], MSGPACK_OBJECT_POSITIVE_INTEGER);                   /* Port             */
+  CHECK_TYPE (args.ptr[2], MSGPACK_OBJECT_BIN);                                                 /* Pubkey           */
+  CHECK_SIZE (args.ptr[2].via.bin, crypto_box_PUBLICKEYBYTES);
+
+  IP_Port ipp;
+  // memcpy(&ipp.port, args.ptr[1].via.array.ptr[1].via.bin.ptr, sizeof(uint16_t));
+  ipp.port = args.ptr[1].via.array.ptr[1].via.u64;
+
+  if (args.ptr[1].via.array.ptr[0].via.array.ptr[1].type == MSGPACK_OBJECT_ARRAY) {
+      /* IPv6 */
+      int i;
+      for (i = 0; i < 4; ++i) {
+        ipp.ip.ip6.uint32[i] = args.ptr[1].via.array.ptr[0].via.array.ptr[1].via.array.ptr[3 - i].via.u64;
+      }
+
+      if (args.ptr[0].via.u64) {
+        ipp.ip.family = TCP_INET6;
+      } else {
+        ipp.ip.family = AF_INET6;
+      }
+  } else {
+      /* IPv4*/
+      if (args.ptr[0].via.u64) {
+        ipp.ip.family = TCP_INET;
+      } else {
+        ipp.ip.family = AF_INET;
+      }
+
+      int i;
+      for (i = 0; i < 4; ++i) {
+          ipp.ip.ip4.uint32 = args.ptr[1].via.array.ptr[0].via.u64;
+      }
+  }
+
+  Node_format node;
+  node.ip_port = ipp;
+  memcpy(&node.public_key, args.ptr[2].via.bin.ptr, crypto_box_PUBLICKEYBYTES);
+
+  uint8_t packed_node[PACKED_NODE_SIZE_IP6] = {0}; /* We assume IP6 because it's bigger */
+
+  int len = pack_nodes(packed_node, sizeof(Node_format), &node, 1);
+
+  CHECK (len > 0);
+
+  SUCCESS {
+    msgpack_pack_bin (res, len);
+    msgpack_pack_bin_body (res, packed_node, len);
+  }
+  return 0;
+}
+
+
 METHOD (bin, Binary_encode, NodesRequest) { return pending; }
 METHOD (array, Binary_encode, NodesResponse) { return pending; }
 METHOD (array, Binary_encode, Packet) { return pending; }
