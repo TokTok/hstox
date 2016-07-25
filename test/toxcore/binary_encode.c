@@ -18,7 +18,7 @@ METHOD (bin, Binary_encode, CipherText)
 METHOD (array, Binary_encode, DhtPacket) { return pending; }
 METHOD (array, Binary_encode, HostAddress) { return pending; }
 
-METHOD (u64, Binary_encode, Int)
+METHOD (u64, Binary_encode, Word64)
 {
   SUCCESS {
     uint64_t u64;
@@ -171,7 +171,7 @@ METHOD (array, Binary, encode)
   DISPATCH (CipherText       , BIN             , bin);
   DISPATCH (DhtPacket        , ARRAY           , array);
   DISPATCH (HostAddress      , ARRAY           , array);
-  DISPATCH (Int              , POSITIVE_INTEGER, u64);
+  DISPATCH (Word64           , POSITIVE_INTEGER, u64);
   DISPATCH (Key              , BIN             , bin);
   DISPATCH (KeyPair          , ARRAY           , array);
   DISPATCH (NodeInfo         , ARRAY           , array);

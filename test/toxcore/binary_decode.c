@@ -18,7 +18,7 @@ METHOD (bin, Binary_decode, CipherText)
 METHOD (bin, Binary_decode, DhtPacket) { return pending; }
 METHOD (bin, Binary_decode, HostAddress) { return pending; }
 
-METHOD (bin, Binary_decode, Int)
+METHOD (bin, Binary_decode, Word64)
 {
   SUCCESS {
     if (args.size < sizeof(uint64_t)) {
@@ -38,8 +38,7 @@ METHOD (bin, Binary_decode, Key) { return pending; }
 METHOD (bin, Binary_decode, KeyPair)
 {
   SUCCESS {
-    // TODO(iphydf): Haskell implementation accepts >= 64, but shouldn't.
-    if (args.size < 64)
+    if (args.size != 64)
       msgpack_pack_nil (res);
     else
       {
@@ -127,7 +126,7 @@ METHOD (array, Binary, decode)
   DISPATCH (CipherText);
   DISPATCH (DhtPacket);
   DISPATCH (HostAddress);
-  DISPATCH (Int);
+  DISPATCH (Word64);
   DISPATCH (Key);
   DISPATCH (KeyPair);
   DISPATCH (NodeInfo);
