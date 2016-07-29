@@ -28,12 +28,12 @@ METHOD (bin, Binary_decode, KeyPair)
 
 METHOD (bin, Binary_decode, NodeInfo)
 {
-  uint16_t data_processed = 0;
+  uint16_t data_processed;
   Node_format node;
-  int len = unpack_nodes(&node, 1, &data_processed, (const uint8_t*)args.ptr, args.size, 1);
+  int len = unpack_nodes(&node, 1, &data_processed, (uint8_t const *)args.ptr, args.size, 1);
 
-  bool ip6_node = ((node.ip_port.ip.family == AF_INET6) || (node.ip_port.ip.family == TCP_INET6));
-  bool tcp      = ((node.ip_port.ip.family == TCP_INET) || (node.ip_port.ip.family == TCP_INET6));
+  bool ip6_node = node.ip_port.ip.family == AF_INET6 || node.ip_port.ip.family == TCP_INET6;
+  bool tcp      = node.ip_port.ip.family == TCP_INET || node.ip_port.ip.family == TCP_INET6;
 
   uint16_t port  = ntohs(node.ip_port.port);
   uint32_t ip4   = ntohl(node.ip_port.ip.ip4.uint32);
@@ -42,28 +42,26 @@ METHOD (bin, Binary_decode, NodeInfo)
   uint32_t ip6_2 = ntohl(node.ip_port.ip.ip6.uint32[2]);
   uint32_t ip6_3 = ntohl(node.ip_port.ip.ip6.uint32[3]);
 
-  if (len > 0 && data_processed > 0) {
-    SUCCESS {
+  SUCCESS {
+    if (len > 0 && data_processed > 0) {
       msgpack_pack_array(res, 3);
-        msgpack_pack_uint8(res, tcp);
-        msgpack_pack_array(res, 2);
-          msgpack_pack_array(res, 2);
-            msgpack_pack_uint8(res, ip6_node);
-            if (ip6_node) {
-              msgpack_pack_array(res, 4);
-                msgpack_pack_uint32(res, ip6_0);
-                msgpack_pack_uint32(res, ip6_1);
-                msgpack_pack_uint32(res, ip6_2);
-                msgpack_pack_uint32(res, ip6_3);
-            } else {
-              msgpack_pack_uint32(res, ip4);
-            }
-          msgpack_pack_uint16(res, port);
-        msgpack_pack_bin(res, crypto_box_PUBLICKEYBYTES);
-        msgpack_pack_bin_body(res, &node.public_key, crypto_box_PUBLICKEYBYTES);
-    }
-  } else {
-    SUCCESS {
+      msgpack_pack_uint8(res, tcp);
+      msgpack_pack_array(res, 2);
+      msgpack_pack_array(res, 2);
+      msgpack_pack_uint8(res, ip6_node);
+      if (ip6_node) {
+        msgpack_pack_array(res, 4);
+        msgpack_pack_uint32(res, ip6_0);
+        msgpack_pack_uint32(res, ip6_1);
+        msgpack_pack_uint32(res, ip6_2);
+        msgpack_pack_uint32(res, ip6_3);
+      } else {
+        msgpack_pack_uint32(res, ip4);
+      }
+      msgpack_pack_uint16(res, port);
+      msgpack_pack_bin(res, crypto_box_PUBLICKEYBYTES);
+      msgpack_pack_bin_body(res, &node.public_key, crypto_box_PUBLICKEYBYTES);
+    } else {
       msgpack_pack_nil(res);
     }
   }

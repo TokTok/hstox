@@ -104,11 +104,9 @@ METHOD (array, Binary_encode, NodeInfo)
   node.ip_port = ipp;
   memcpy(&node.public_key, public_key.ptr, crypto_box_PUBLICKEYBYTES);
 
-  uint8_t packed_node[PACKED_NODE_SIZE_IP6] = {0}; /* We assume IP6 because it's bigger */
+  uint8_t packed_node[PACKED_NODE_SIZE_IP6]; /* We assume IP6 because it's bigger */
 
-  int len = pack_nodes(packed_node, sizeof(Node_format), &node, 1);
-
-  CHECK (len > 0);
+  int len = pack_nodes(packed_node, sizeof(packed_node), &node, 1);
 
   SUCCESS {
     msgpack_pack_bin (res, len);
