@@ -103,6 +103,7 @@ libsodium: .libsodium.stamp
 format: .format.stamp
 .format.stamp: $(SOURCES) .configure.stamp
 	if which stylish-haskell; then tools/format-haskell -i src; fi
+	if which clang-format; then clang-format -i test/toxcore/*.[ch]; fi
 	@touch $@
 
 lint: .lint.stamp

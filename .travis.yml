@@ -1,6 +1,15 @@
 language: haskell
 ghc: 7.8
 
+addons:
+  apt:
+    sources:
+      - llvm-toolchain-precise-3.8
+      - ubuntu-toolchain-r-test
+    packages:
+      - clang-format-3.8
+      - clang-tidy-3.8
+
 cache:
   directories:
     - $HOME/.cabal
