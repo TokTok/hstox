@@ -57,13 +57,13 @@ class GProdPack f where
 
 instance (GMessagePack a, GProdPack b) => GProdPack (a :*: b) where
   prodToObject (a :*: b) = gToObject a : prodToObject b
-  prodFromObject (a:b) = (:*:) <$> gFromObject a <*> prodFromObject b
-  prodFromObject l     = fail "invalid encoding for product type"
+  prodFromObject (a:b)   = (:*:) <$> gFromObject a <*> prodFromObject b
+  prodFromObject _       = fail "invalid encoding for product type"
 
 instance GMessagePack a => GProdPack (M1 t c a) where
   prodToObject (M1 x) = [gToObject x]
-  prodFromObject [x] = M1 <$> gFromObject x
-  prodFromObject l   = fail "invalid encoding for product type"
+  prodFromObject [x]  = M1 <$> gFromObject x
+  prodFromObject _    = fail "invalid encoding for product type"
 
 
 -- Sum type packing.
