@@ -106,7 +106,7 @@ METHOD (array, Binary_encode, NodeInfo)
 
   uint8_t packed_node[PACKED_NODE_SIZE_IP6]; /* We assume IP6 because it's bigger */
 
-  int len = pack_nodes(packed_node, sizeof(packed_node), &node, 1);
+  int len = pack_nodes(packed_node, sizeof packed_node, &node, 1);
 
   SUCCESS {
     msgpack_pack_bin (res, len);
