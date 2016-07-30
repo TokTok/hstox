@@ -43,7 +43,7 @@ METHOD (bin, Binary_decode, NodeInfo)
   uint32_t ip6_3 = ntohl(node.ip_port.ip.ip6.uint32[3]);
 
   SUCCESS {
-    if (len > 0 && data_processed > 0) {
+    if (len > 0 && data_processed > 0 && data_processed == args.size) {
       msgpack_pack_array(res, 3);
       msgpack_pack_uint8(res, tcp);
       msgpack_pack_array(res, 2);
