@@ -1,6 +1,7 @@
 #include "methods.h"
 
-#include <DHT.h>
+#include "DHT.h"
+#include "network.h"
 
 METHOD(bin, Binary_decode, CipherText) { return pending; }
 
@@ -79,7 +80,50 @@ METHOD(bin, Binary_decode, NodesResponse) { return pending; }
 
 METHOD(bin, Binary_decode, Packet) { return pending; }
 
-METHOD(bin, Binary_decode, PacketKind) { return pending; }
+/* Only used for bootstrap nodes */
+#define BOOTSTRAP_INFO_PACKET_ID 240
+
+METHOD(bin, Binary_decode, PacketKind) {
+
+  SUCCESS {
+    if (args.size == 1) {
+      uint8_t type;
+      switch (*args.ptr) {
+      case NET_PACKET_PING_REQUEST:
+      case NET_PACKET_PING_RESPONSE:
+      case NET_PACKET_GET_NODES:
+      case NET_PACKET_SEND_NODES_IPV6:
+      case NET_PACKET_COOKIE_REQUEST:
+      case NET_PACKET_COOKIE_RESPONSE:
+      case NET_PACKET_CRYPTO_HS:
+      case NET_PACKET_CRYPTO_DATA:
+      case NET_PACKET_CRYPTO:
+      case NET_PACKET_LAN_DISCOVERY:
+      case NET_PACKET_ONION_SEND_INITIAL:
+      case NET_PACKET_ONION_SEND_1:
+      case NET_PACKET_ONION_SEND_2:
+      case NET_PACKET_ANNOUNCE_REQUEST:
+      case NET_PACKET_ANNOUNCE_RESPONSE:
+      case NET_PACKET_ONION_DATA_REQUEST:
+      case NET_PACKET_ONION_DATA_RESPONSE:
+      case NET_PACKET_ONION_RECV_3:
+      case NET_PACKET_ONION_RECV_2:
+      case NET_PACKET_ONION_RECV_1: {
+        type = (uint8_t)(*args.ptr);
+        msgpack_pack_uint8(res, type);
+        break;
+      }
+      default: {
+        msgpack_pack_nil(res);
+        break;
+      }
+      }
+    } else {
+      msgpack_pack_nil(res);
+    }
+  }
+  return 0;
+}
 
 METHOD(bin, Binary_decode, PingPacket) { return pending; }
 
