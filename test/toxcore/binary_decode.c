@@ -1,7 +1,7 @@
 #include "methods.h"
 
-#include "DHT.h"
-#include "network.h"
+#include <DHT.h>
+#include <network.h>
 
 METHOD(bin, Binary_decode, CipherText) { return pending; }
 
@@ -87,36 +87,24 @@ METHOD(bin, Binary_decode, PacketKind) {
 
   SUCCESS {
     if (args.size == 1) {
-      uint8_t type;
-      switch (*args.ptr) {
-      case NET_PACKET_PING_REQUEST:
-      case NET_PACKET_PING_RESPONSE:
-      case NET_PACKET_GET_NODES:
-      case NET_PACKET_SEND_NODES_IPV6:
-      case NET_PACKET_COOKIE_REQUEST:
-      case NET_PACKET_COOKIE_RESPONSE:
-      case NET_PACKET_CRYPTO_HS:
-      case NET_PACKET_CRYPTO_DATA:
-      case NET_PACKET_CRYPTO:
-      case NET_PACKET_LAN_DISCOVERY:
-      case NET_PACKET_ONION_SEND_INITIAL:
-      case NET_PACKET_ONION_SEND_1:
-      case NET_PACKET_ONION_SEND_2:
-      case NET_PACKET_ANNOUNCE_REQUEST:
-      case NET_PACKET_ANNOUNCE_RESPONSE:
-      case NET_PACKET_ONION_DATA_REQUEST:
-      case NET_PACKET_ONION_DATA_RESPONSE:
-      case NET_PACKET_ONION_RECV_3:
-      case NET_PACKET_ONION_RECV_2:
-      case NET_PACKET_ONION_RECV_1: {
-        type = (uint8_t)(*args.ptr);
+      uint8_t type = *args.ptr;
+      if (type == NET_PACKET_PING_REQUEST || type == NET_PACKET_PING_RESPONSE ||
+          type == NET_PACKET_GET_NODES || type == NET_PACKET_SEND_NODES_IPV6 ||
+          type == NET_PACKET_COOKIE_REQUEST ||
+          type == NET_PACKET_COOKIE_RESPONSE || type == NET_PACKET_CRYPTO_HS ||
+          type == NET_PACKET_CRYPTO_DATA || type == NET_PACKET_CRYPTO ||
+          type == NET_PACKET_LAN_DISCOVERY ||
+          type == NET_PACKET_ONION_SEND_INITIAL ||
+          type == NET_PACKET_ONION_SEND_1 || type == NET_PACKET_ONION_SEND_2 ||
+          type == NET_PACKET_ANNOUNCE_REQUEST ||
+          type == NET_PACKET_ANNOUNCE_RESPONSE ||
+          type == NET_PACKET_ONION_DATA_REQUEST ||
+          type == NET_PACKET_ONION_DATA_RESPONSE ||
+          type == NET_PACKET_ONION_RECV_3 || type == NET_PACKET_ONION_RECV_2 ||
+          type == NET_PACKET_ONION_RECV_1) {
         msgpack_pack_uint8(res, type);
-        break;
-      }
-      default: {
+      } else {
         msgpack_pack_nil(res);
-        break;
-      }
       }
     } else {
       msgpack_pack_nil(res);
