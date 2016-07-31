@@ -85,7 +85,21 @@ METHOD(bin, Binary_decode, PingPacket) { return pending; }
 
 METHOD(bin, Binary_decode, PlainText) { return pending; }
 
-METHOD(bin, Binary_decode, PortNumber) { return pending; }
+METHOD(bin, Binary_decode, PortNumber) {
+
+  SUCCESS {
+    if (args.size == 2) {
+      uint16_t tmp;
+      memcpy(&tmp, args.ptr, 2);
+      uint16_t port = ntohs(tmp);
+      msgpack_pack_uint16(res, port);
+    } else {
+      msgpack_pack_nil(res);
+    }
+  }
+
+  return 0;
+}
 
 METHOD(bin, Binary_decode, RpcPacket) { return pending; }
 
