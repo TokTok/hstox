@@ -1,0 +1,47 @@
+# vim:ft=dockerfile
+# https://github.com/iphydf/docker-build-ghc-android/blob/master/Dockerfile
+FROM iphydf/haskell:8.0.1-arm
+MAINTAINER iphydf@gmail.com
+
+WORKDIR $BASE
+
+COPY user-scripts/build-libsodium.sh $BASE/
+RUN ./build-libsodium.sh
+
+#
+# Install prerequisite haskell packages.
+#
+COPY patches/*.patch $BASE/patches/
+COPY user-scripts/cabal-install-zlib.sh $BASE/
+RUN ./cabal-install-zlib.sh
+
+COPY user-scripts/cabal-install-setup.sh $BASE/
+RUN ./cabal-install-setup.sh distributive 0.5.0.2 \
+ && ./cabal-install-setup.sh comonad 5
+
+COPY user-scripts/target-cabal $BASE/
+RUN $BASE/target-cabal install \
+ base16-bytestring \
+ binary-bits \
+ binary-conduit \
+ conduit-extra \
+ data-binary-ieee754 \
+ iproute \
+ network-2.6.2.1 \
+ QuickCheck-2.9.1 \
+ saltine \
+ split \
+ unordered-containers
+
+WORKDIR $HOME
+
+RUN git clone --depth=1 --branch=ffi https://github.com/iphydf/hstox \
+ && $BASE/target-cabal install hstox/hstox.cabal -flibrary-only --only-dependencies \
+ && rm -rf hstox
+
+USER root
+RUN apt-get install -y runit
+
+ENTRYPOINT ["/home/androidbuilder/entrypoint.sh"]
+WORKDIR /work
+COPY user-scripts/entrypoint.sh /home/androidbuilder/

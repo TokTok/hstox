@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE IncoherentInstances  #-}
 {-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE Trustworthy          #-}
+{-# LANGUAGE Safe                 #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 --------------------------------------------------------------------
