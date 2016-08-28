@@ -32,16 +32,7 @@ install:
 script:
   - export LD_LIBRARY_PATH=$HOME/.cabal/extra-dist/lib
   - make
-  # Make a temporary commit with just the submodules to avoid errors on diff
-  # checking due to ref changes in submodules.
-  - git config --global user.email "travis@travis-ci.org"
-  - git config --global user.name "Travis Builder"
-  - >
-      git commit --allow-empty -m'Submodule updates.' \
-        test/toxcore/libsodium \
-        test/toxcore/msgpack-c \
-        test/toxcore/toxcore
-  - git diff --exit-code
+  - git diff --exit-code --ignore-submodules
 
 after_script:
   - codecov-haskell hstox
