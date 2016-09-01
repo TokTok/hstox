@@ -2,7 +2,7 @@
 
 #include <network.h>
 
-uint8_t const packet_kinds[20] = {
+uint8_t const packet_kinds[21] = {
     // = PingRequest       -- 0x00: Ping request
     NET_PACKET_PING_REQUEST,
     // | PingResponse      -- 0x01: Ping response
@@ -44,5 +44,5 @@ uint8_t const packet_kinds[20] = {
     // | OnionResponse1    -- 0x8e: First level wrapped onion response
     NET_PACKET_ONION_RECV_1,
     // TODO(iphydf): We don't know what this is, yet.
-    // BOOTSTRAP_INFO_PACKET_ID,
+    BOOTSTRAP_INFO_PACKET_ID,
 };
