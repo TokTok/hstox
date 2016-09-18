@@ -8,12 +8,18 @@ import           Network.Tox.Testing (serve)
 import qualified TestSuite
 
 
+foreign import ccall test_main :: IO ()
+
+
 main :: IO ()
 main = do
   args <- getArgs
-  (_, _, _, sut) <- createProcess $ proc "dist/build/sut-toxcore/sut-toxcore" []
-  -- 100ms delay to give the SUT time to set up its socket before we try to
-  -- build connections in the test runner.
-  threadDelay $ 100 * 1000
-  withArgs (["--print-cpu-time", "--color"] ++ args) TestSuite.main
-  terminateProcess sut
+  case args of
+    ["--sut"] -> test_main
+    _ -> do
+      (_, _, _, sut) <- createProcess $ proc "dist/build/test-toxcore/test-toxcore" ["--sut"]
+      -- 100ms delay to give the SUT time to set up its socket before we try to
+      -- build connections in the test runner.
+      threadDelay $ 100 * 1000
+      withArgs (["--print-cpu-time", "--color"] ++ args) TestSuite.main
+      terminateProcess sut
