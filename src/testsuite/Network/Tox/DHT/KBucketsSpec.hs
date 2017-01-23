@@ -17,6 +17,7 @@ import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.DHT.KBuckets      (KBuckets)
 import qualified Network.Tox.DHT.KBuckets      as KBuckets
 import           Network.Tox.EncodingSpec
+import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
 
 
@@ -25,7 +26,7 @@ makeInputKey pos digit =
   read $ "\"" ++ map (const '0') [0 .. pos - 1] ++ digit : map (const '0') [pos .. 63] ++ "\""
 
 
-getAllBuckets :: KBuckets -> [[NodeInfo.NodeInfo]]
+getAllBuckets :: KBuckets -> [[NodeInfo]]
 getAllBuckets kBuckets =
   map (Map.elems . ClientList.nodes) (Map.elems (KBuckets.buckets kBuckets))
 
@@ -69,13 +70,13 @@ spec = do
       in
       afterAdd0 `shouldBe` afterAdd1
 
-  it "buckets have maximum size bucketSize" $
+  it "has as buckets ClientLists with maximum size bucketSize and base key baseKey" $
     property $ \kBuckets ->
-      mapM_ (`shouldSatisfy` (==KBuckets.bucketSize kBuckets) . ClientList.maxSize) $ Map.elems $ KBuckets.buckets kBuckets
-
-  it "buckets have base key baseKey" $
-    property $ \kBuckets ->
-      mapM_ (`shouldSatisfy` (==KBuckets.baseKey kBuckets) . ClientList.baseKey) $ Map.elems $ KBuckets.buckets kBuckets
+      mapM_
+        (`shouldSatisfy` \clientList ->
+          ClientList.maxSize clientList == KBuckets.bucketSize kBuckets
+          && ClientList.baseKey clientList == KBuckets.baseKey kBuckets
+        ) . Map.elems $ KBuckets.buckets kBuckets
 
   it "never contains a NodeInfo with the public key equal to the base key" $
     property $ \kBuckets ->
@@ -117,7 +118,7 @@ spec = do
     it "iterates over nodes in order of distance from the base key" $
       property $ \kBuckets ->
         let
-          nodes             = KBuckets.foldNodes (\ns n -> ns++[n]) [] kBuckets
+          nodes             = reverse $ KBuckets.foldNodes (flip (:)) [] kBuckets
           nodeDistance node = Distance.xorDistance (KBuckets.baseKey kBuckets) (NodeInfo.publicKey node)
         in
           nodes `shouldBe` sortBy (comparing nodeDistance) nodes

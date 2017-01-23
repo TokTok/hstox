@@ -51,17 +51,18 @@ empty :: PublicKey -> Int -> ClientList
 empty publicKey size = ClientList
   { baseKey = publicKey
   , maxSize = size
-  , nodes = Map.empty }
+  , nodes   = Map.empty
+  }
 
 isEmpty :: ClientList -> Bool
 isEmpty = Map.null . nodes
 
 updateClientNodes :: (ClientNodes -> ClientNodes) -> ClientList -> ClientList
-updateClientNodes f clientList@ClientList{nodes} =
+updateClientNodes f clientList@ClientList{ nodes } =
   clientList{nodes = f nodes}
 
 lookup :: PublicKey -> ClientList -> Maybe NodeInfo
-lookup publicKey _cl@ClientList{baseKey, nodes} =
+lookup publicKey _cl@ClientList{ baseKey, nodes } =
   Distance.xorDistance publicKey baseKey `Map.lookup` nodes
 
 \end{code}
@@ -86,7 +87,7 @@ same effect as removing it once.
 \begin{code}
 
 addNode :: NodeInfo -> ClientList -> ClientList
-addNode nodeInfo clientList@ClientList{baseKey, maxSize} =
+addNode nodeInfo clientList@ClientList{ baseKey, maxSize } =
   (`updateClientNodes` clientList) $
     mapTake maxSize
     . Map.insert
@@ -98,7 +99,7 @@ removeNode publicKey clientList =
   (`updateClientNodes` clientList) $
     Map.delete $ Distance.xorDistance publicKey $ baseKey clientList
 
--- |mapTake is Data.Map.take in >=containers-0.5.8, but we define it for
+-- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it for
 -- compatibility with older versions.
 mapTake :: Int -> Map k a -> Map k a
 mapTake n = Map.fromDistinctAscList . take n . Map.toAscList

@@ -24,7 +24,7 @@ spec = do
 
   it "has no more than maxSize elements" $
     property $ \clientList ->
-        Map.size (ClientList.nodes clientList) `shouldSatisfy` (<= ClientList.maxSize clientList)
+      Map.size (ClientList.nodes clientList) `shouldSatisfy` (<= ClientList.maxSize clientList)
 
   it "removing a node twice has no effect" $
     property $ \baseKey nodeInfo size ->
@@ -49,19 +49,19 @@ spec = do
     it "keeps the k nodes closest to the base key" $
       property $ \clientList nodeInfo ->
         let
-          allNodes   = (nodeInfo:) $ Map.elems $ ClientList.nodes clientList
-          keptNodes  = Map.elems $ ClientList.nodes $ ClientList.addNode nodeInfo clientList
+          allNodes          = (nodeInfo:) $ Map.elems $ ClientList.nodes clientList
+          keptNodes         = Map.elems $ ClientList.nodes $ ClientList.addNode nodeInfo clientList
           nodeDistance node = Distance.xorDistance (ClientList.baseKey clientList) (NodeInfo.publicKey node)
-          sortNodes = sortBy $ comparing nodeDistance
+          sortNodes         = sortBy $ comparing nodeDistance
         in
-          take (ClientList.maxSize clientList) (sortNodes allNodes) `shouldBe` sortNodes keptNodes
+        take (ClientList.maxSize clientList) (sortNodes allNodes) `shouldBe` sortNodes keptNodes
 
   describe "foldNodes" $
     it "iterates over nodes in order of distance from the base key" $
       property $ \clientList ->
         let
-          nodes             = ClientList.foldNodes (\ns n -> ns++[n]) [] clientList
+          nodes             = reverse $ ClientList.foldNodes (flip (:)) [] clientList
           nodeDistance node = Distance.xorDistance (ClientList.baseKey clientList) (NodeInfo.publicKey node)
-          sortNodes = sortBy (comparing nodeDistance)
+          sortNodes         = sortBy (comparing nodeDistance)
         in
-          nodes `shouldBe` sortNodes nodes
+        nodes `shouldBe` sortNodes nodes

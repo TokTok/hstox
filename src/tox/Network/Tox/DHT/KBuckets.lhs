@@ -171,7 +171,8 @@ is the furthest away in terms of the distance metric.
 \begin{code}
 
 foldNodes :: (a -> NodeInfo -> a) -> a -> KBuckets -> a
-foldNodes f x = foldl f x
+foldNodes f x =
+  foldl f x
   . concatMap (Map.elems . ClientList.nodes)
   . reverse . Map.elems . buckets
 

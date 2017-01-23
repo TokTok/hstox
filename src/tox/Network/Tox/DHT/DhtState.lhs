@@ -191,8 +191,8 @@ addNode nodeInfo =
   . mapBuckets (KBuckets.addNode nodeInfo)
   . mapSearchClientLists addUnlessBase
   where
-    addUnlessBase clientList |
-      NodeInfo.publicKey nodeInfo == ClientList.baseKey clientList =
+    addUnlessBase clientList
+      | NodeInfo.publicKey nodeInfo == ClientList.baseKey clientList =
         clientList
     addUnlessBase clientList = ClientList.addNode nodeInfo clientList
 
@@ -210,7 +210,7 @@ mapSearchEntry f dhtState@DhtState { dhtSearchList } =
 
 mapSearchClientLists :: (ClientList -> ClientList) -> DhtState -> DhtState
 mapSearchClientLists f =
-    mapSearchEntry $ \entry@DhtSearchEntry{searchClientList} ->
+    mapSearchEntry $ \entry@DhtSearchEntry{ searchClientList } ->
       entry { searchClientList = f searchClientList }
 
 updateSearchNode :: PublicKey -> Maybe NodeInfo -> DhtState -> DhtState
