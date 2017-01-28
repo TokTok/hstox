@@ -28,6 +28,7 @@ import qualified Network.Tox.DHT.ClientList    as ClientList
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
+import           Network.Tox.Time              (TimeStamp)
 
 
 {-------------------------------------------------------------------------------
@@ -61,6 +62,13 @@ defaultBucketSize = 8
 empty :: PublicKey -> KBuckets
 empty = KBuckets defaultBucketSize Map.empty
 
+
+-- | note that this traverses in the opposite direction from the "iteration
+-- order" defined below. TODO: either find an efficient way to reverse the
+-- order, or (neater) use a key for buckets which is ordered the right way.
+traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> KBuckets -> f KBuckets
+traverseClientLists f kBuckets@KBuckets{ buckets } =
+  (\x -> kBuckets{ buckets = x }) <$> traverse f buckets
 
 \end{code}
 
@@ -154,9 +162,9 @@ for entry to the corresponding bucket.
 \begin{code}
 
 
-addNode :: NodeInfo -> KBuckets -> KBuckets
-addNode nodeInfo kBuckets =
-  updateBucketForKey kBuckets publicKey $ ClientList.addNode nodeInfo
+addNode :: TimeStamp -> NodeInfo -> KBuckets -> KBuckets
+addNode time nodeInfo kBuckets =
+  updateBucketForKey kBuckets publicKey $ ClientList.addNode time nodeInfo
   where
     publicKey = NodeInfo.publicKey nodeInfo
 
@@ -176,7 +184,7 @@ is the furthest away in terms of the distance metric.
 foldNodes :: (a -> NodeInfo -> a) -> a -> KBuckets -> a
 foldNodes f x =
   foldl f x
-  . concatMap (Map.elems . ClientList.nodes)
+  . concatMap ClientList.nodeInfos
   . reverse . Map.elems . buckets
 
 
@@ -189,12 +197,12 @@ foldNodes f x =
 
 getAllNodes :: KBuckets -> [NodeInfo]
 getAllNodes =
-  concatMap (Map.elems . ClientList.nodes) . Map.elems . buckets
+  concatMap ClientList.nodeInfos . Map.elems . buckets
 
 
 genKBuckets :: PublicKey -> Gen KBuckets
 genKBuckets publicKey =
-  foldl (flip addNode) (empty publicKey) <$> Gen.listOf arbitrary
+  foldl (flip $ uncurry addNode) (empty publicKey) <$> Gen.listOf arbitrary
 
 
 instance Arbitrary KBuckets where

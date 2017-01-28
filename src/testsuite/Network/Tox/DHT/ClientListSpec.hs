@@ -27,30 +27,30 @@ spec = do
       Map.size (ClientList.nodes clientList) `shouldSatisfy` (<= ClientList.maxSize clientList)
 
   it "removing a node twice has no effect" $
-    property $ \baseKey nodeInfo size ->
+    property $ \baseKey time nodeInfo size ->
       let
         empty        = ClientList.empty baseKey
-        afterAdd     = ClientList.addNode nodeInfo $ empty size
+        afterAdd     = ClientList.addNode time nodeInfo $ empty size
         afterRemove0 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
         afterRemove1 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
       in
       afterRemove0 `shouldBe` afterRemove1
 
   it "adding a node twice has no effect" $
-    property $ \baseKey nodeInfo size ->
+    property $ \baseKey time nodeInfo size ->
       let
         empty        = ClientList.empty baseKey
-        afterAdd0    = ClientList.addNode nodeInfo $ empty size
-        afterAdd1    = ClientList.addNode nodeInfo afterAdd0
+        afterAdd0    = ClientList.addNode time nodeInfo $ empty size
+        afterAdd1    = ClientList.addNode time nodeInfo afterAdd0
       in
       afterAdd0 `shouldBe` afterAdd1
 
   describe "addNode" $
     it "keeps the k nodes closest to the base key" $
-      property $ \clientList nodeInfo ->
+      property $ \clientList time nodeInfo ->
         let
-          allNodes          = (nodeInfo:) $ Map.elems $ ClientList.nodes clientList
-          keptNodes         = Map.elems $ ClientList.nodes $ ClientList.addNode nodeInfo clientList
+          allNodes          = (nodeInfo:) $ ClientList.nodeInfos clientList
+          keptNodes         = ClientList.nodeInfos $ ClientList.addNode time nodeInfo clientList
           nodeDistance node = Distance.xorDistance (ClientList.baseKey clientList) (NodeInfo.publicKey node)
           sortNodes         = sortBy $ comparing nodeDistance
         in

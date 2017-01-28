@@ -7,6 +7,7 @@ module Network.Tox.DHT.ClientList where
 
 import           Control.Applicative           ((<$>), (<*>))
 import           Control.Monad                 (join)
+import           Control.Monad.Trans.Writer    (Writer, tell)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary,
@@ -18,6 +19,8 @@ import           Network.Tox.Crypto.Key        (PublicKey)
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
+import           Network.Tox.Time              (TimeDiff, TimeStamp)
+import qualified Network.Tox.Time              as Time
 
 
 {-------------------------------------------------------------------------------
@@ -46,7 +49,20 @@ data ClientList = ClientList
   }
   deriving (Eq, Read, Show)
 
-type ClientNodes = Map Distance.Distance NodeInfo
+type ClientNodes = Map Distance.Distance ClientNode
+
+data ClientNode = ClientNode
+  { nodeInfo  :: NodeInfo
+  , lastPing  :: TimeStamp
+  , pingCount :: Int
+  }
+  deriving (Eq, Read, Show)
+
+newNode :: TimeStamp -> NodeInfo -> ClientNode
+newNode time node = ClientNode node time 0
+
+nodeInfos :: ClientList -> [NodeInfo]
+nodeInfos = map nodeInfo . Map.elems . nodes
 
 empty :: PublicKey -> Int -> ClientList
 empty publicKey size = ClientList
@@ -64,7 +80,7 @@ updateClientNodes f clientList@ClientList{ nodes } =
 
 lookup :: PublicKey -> ClientList -> Maybe NodeInfo
 lookup publicKey _cl@ClientList{ baseKey, nodes } =
-  Distance.xorDistance publicKey baseKey `Map.lookup` nodes
+  nodeInfo <$> Distance.xorDistance publicKey baseKey `Map.lookup` nodes
 
 \end{code}
 
@@ -87,13 +103,13 @@ same effect as removing it once.
 
 \begin{code}
 
-addNode :: NodeInfo -> ClientList -> ClientList
-addNode nodeInfo clientList@ClientList{ baseKey, maxSize } =
+addNode :: TimeStamp -> NodeInfo -> ClientList -> ClientList
+addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =
   (`updateClientNodes` clientList) $
     mapTake maxSize
     . Map.insert
       (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
-      nodeInfo
+      (newNode time nodeInfo)
 
 removeNode :: PublicKey -> ClientList -> ClientList
 removeNode publicKey clientList =
@@ -114,7 +130,31 @@ is the furthest away in terms of the distance metric.
 \begin{code}
 
 foldNodes :: (a -> NodeInfo -> a) -> a -> ClientList -> a
-foldNodes f x = foldl f x . Map.elems . nodes
+foldNodes f x = foldl f x . nodeInfos
+
+
+pingInterval :: TimeDiff
+pingInterval = Time.seconds 60
+
+maxPings :: Int
+maxPings = 2
+
+pingNodes :: TimeStamp -> ClientList -> Writer [(NodeInfo, PublicKey)] ClientList
+pingNodes time clientList@ClientList{ nodes } =
+  (\x -> clientList{ nodes = x }) <$> traverseMaybe pingNode nodes
+  where
+    traverseMaybe :: Applicative f =>
+        (a -> f (Maybe b)) -> Map.Map k a -> f (Map.Map k b)
+    traverseMaybe f = (Map.mapMaybe id <$>) . traverse f
+    pingNode :: ClientNode -> Writer [(NodeInfo, PublicKey)] (Maybe ClientNode)
+    pingNode clientNode@ClientNode{ nodeInfo, lastPing, pingCount } =
+      if time - lastPing < pingInterval
+      then pure $ Just clientNode
+      else (tell [requestInfo] *>) . pure $
+        if pingCount + 1 < maxPings
+        then Just $ clientNode{ lastPing = time, pingCount = pingCount + 1 }
+        else Nothing
+      where requestInfo = (nodeInfo, baseKey clientList)
 
 {-------------------------------------------------------------------------------
  -
@@ -125,9 +165,12 @@ foldNodes f x = foldl f x . Map.elems . nodes
 
 genClientList :: PublicKey -> Int -> Gen ClientList
 genClientList publicKey size =
-  foldl (flip addNode) (empty publicKey size) <$> Gen.listOf arbitrary
+  foldl (flip $ uncurry addNode) (empty publicKey size) <$> Gen.listOf arbitrary
 
 
 instance Arbitrary ClientList where
   arbitrary = join $ genClientList <$> arbitrary <*> arbitrarySizedNatural
+
+instance Arbitrary ClientNode where
+  arbitrary = ClientNode <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}

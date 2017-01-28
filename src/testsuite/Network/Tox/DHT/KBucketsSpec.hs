@@ -28,7 +28,7 @@ makeInputKey pos digit =
 
 getAllBuckets :: KBuckets -> [[NodeInfo]]
 getAllBuckets kBuckets =
-  map (Map.elems . ClientList.nodes) (Map.elems (KBuckets.buckets kBuckets))
+  map ClientList.nodeInfos (Map.elems (KBuckets.buckets kBuckets))
 
 
 spec :: Spec
@@ -36,37 +36,37 @@ spec = do
   readShowSpec (Proxy :: Proxy KBuckets)
 
   it "does not accept adding a NodeInfo with the baseKey as publicKey" $
-    property $ \kBuckets nodeInfo ->
-      KBuckets.addNode nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
+    property $ \kBuckets time nodeInfo ->
+      KBuckets.addNode time nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
         `shouldBe`
         kBuckets
 
   it "adding a node to an empty k-buckets always succeeds if baseKey <> nodeKey" $
-    property $ \baseKey nodeInfo ->
+    property $ \baseKey time nodeInfo ->
       let
         empty = KBuckets.empty baseKey
-        kBuckets = KBuckets.addNode nodeInfo empty
+        kBuckets = KBuckets.addNode time nodeInfo empty
       in
       if baseKey == NodeInfo.publicKey nodeInfo
       then kBuckets `shouldBe` empty
       else kBuckets `shouldNotBe` empty
 
   it "removing a node twice has no effect" $
-    property $ \baseKey nodeInfo ->
+    property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd     = KBuckets.addNode nodeInfo empty
+        afterAdd     = KBuckets.addNode time nodeInfo empty
         afterRemove0 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
         afterRemove1 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
       in
       afterRemove0 `shouldBe` afterRemove1
 
   it "adding a node twice has no effect" $
-    property $ \baseKey nodeInfo ->
+    property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd0    = KBuckets.addNode nodeInfo empty
-        afterAdd1    = KBuckets.addNode nodeInfo afterAdd0
+        afterAdd0    = KBuckets.addNode time nodeInfo empty
+        afterAdd1    = KBuckets.addNode time nodeInfo afterAdd0
       in
       afterAdd0 `shouldBe` afterAdd1
 

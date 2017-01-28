@@ -88,6 +88,15 @@ not received a Nodes Response for 182 seconds, the node is not even pinged. So
 one ping is sent after the node becomes Bad. In the special case that every
 node in the Close List is Bad, they are all pinged once more.)
 
+Proposed hs-toxcore implementation: store on the Client Lists for each node a
+Last Pinged timestamp and a Pings Counter.  Nodes are added with these
+set to the current time and 0, respectively.  This includes updating an
+already present node.  Periodically pass through the DHT State nodes, and for
+each which is due a ping: ping it, update the timestamp, and increment the
+counter, and if the counter is then 2 (configurable constant), remove the node
+from the list. This is pretty close to the behaviour of c-toxcore, but much
+simpler.
+
 \subsection{Handling Nodes Response packets}
 When a valid Nodes Response packet is received, it is first checked that a
 Nodes Request was sent within the last 60 seconds to the node from which the

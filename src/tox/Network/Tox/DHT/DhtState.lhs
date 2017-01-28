@@ -5,6 +5,7 @@
 module Network.Tox.DHT.DhtState where
 
 import           Control.Applicative           ((<$>), (<*>), (<|>))
+import           Control.Monad.Trans.Writer    (Writer)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 import qualified Data.Maybe                    as Maybe
@@ -19,6 +20,7 @@ import           Network.Tox.DHT.KBuckets      (KBuckets)
 import qualified Network.Tox.DHT.KBuckets      as KBuckets
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
+import           Network.Tox.Time              (TimeStamp)
 
 
 {-------------------------------------------------------------------------------
@@ -154,6 +156,19 @@ foldNodes f x DhtState { dhtCloseList, dhtSearchList } =
     (KBuckets.foldNodes f x dhtCloseList)
     dhtSearchList
 
+traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> DhtState -> f DhtState
+traverseClientLists f dhtState@DhtState{ dhtCloseList, dhtSearchList } =
+  (\close' search' ->
+      dhtState{ dhtCloseList = close', dhtSearchList = search' }) <$>
+    KBuckets.traverseClientLists f dhtCloseList <*>
+    traverse traverseEntry dhtSearchList
+  where
+    traverseEntry entry =
+      (\x -> entry{ searchClientList = x }) <$> f (searchClientList entry)
+
+pingNodes :: TimeStamp -> DhtState -> Writer [(NodeInfo, PublicKey)] DhtState
+pingNodes time = traverseClientLists $ ClientList.pingNodes time
+
 \end{code}
 
 A node info is considered to be contained in the DHT State if it is contained
@@ -194,16 +209,16 @@ entry is associated (i.e. the node being search for).
 
 \begin{code}
 
-addNode :: NodeInfo -> DhtState -> DhtState
-addNode nodeInfo =
+addNode :: TimeStamp -> NodeInfo -> DhtState -> DhtState
+addNode time nodeInfo =
   updateSearchNode (NodeInfo.publicKey nodeInfo) (Just nodeInfo)
-  . mapBuckets (KBuckets.addNode nodeInfo)
+  . mapBuckets (KBuckets.addNode time nodeInfo)
   . mapSearchClientLists addUnlessBase
   where
     addUnlessBase clientList
       | NodeInfo.publicKey nodeInfo == ClientList.baseKey clientList =
         clientList
-    addUnlessBase clientList = ClientList.addNode nodeInfo clientList
+    addUnlessBase clientList = ClientList.addNode time nodeInfo clientList
 
 mapBuckets :: (KBuckets -> KBuckets) -> DhtState -> DhtState
 mapBuckets f dhtState@DhtState { dhtCloseList } =
@@ -261,9 +276,9 @@ instance Arbitrary DhtState where
   arbitrary =
     initialise <$> arbitrary <*> arbitrary <*> arbitrary
     where
-      initialise :: KeyPair -> [NodeInfo] -> [PublicKey] -> DhtState
+      initialise :: KeyPair -> [(TimeStamp, NodeInfo)] -> [PublicKey] -> DhtState
       initialise kp nis =
-        foldl (flip addSearchKey) (foldl (flip addNode) (empty kp) nis)
+        foldl (flip addSearchKey) (foldl (flip $ uncurry addNode) (empty kp) nis)
 
   shrink dhtState =
     Maybe.maybeToList shrunkNode ++ Maybe.maybeToList shrunkSearchKey
