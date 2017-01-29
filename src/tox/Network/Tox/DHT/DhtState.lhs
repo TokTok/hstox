@@ -11,7 +11,8 @@ import           Data.Functor.Identity         (Identity (..))
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 import qualified Data.Maybe                    as Maybe
-import           Data.Monoid                   (Dual (..), Endo (..), appEndo,
+import           Data.Monoid                   (All (..), Dual (..), Endo (..),
+                                                Monoid, appEndo, getAll,
                                                 getDual)
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary, shrink)
 
@@ -155,7 +156,8 @@ iteration order in the corresponding specification.
 
 \begin{code}
 
-traverseNodeLists :: Applicative f => (forall l. NodeList l => l -> f l) -> DhtState -> f DhtState
+traverseNodeLists :: Applicative f =>
+  (forall l. NodeList l => l -> f l) -> DhtState -> f DhtState
 traverseNodeLists f dhtState@DhtState{ dhtCloseList, dhtSearchList }  =
   (\close' search' ->
       dhtState{ dhtCloseList = close', dhtSearchList = search' }) <$>
@@ -165,10 +167,15 @@ traverseNodeLists f dhtState@DhtState{ dhtCloseList, dhtSearchList }  =
     traverseEntry entry =
       (\x -> entry{ searchClientList = x }) <$> f (searchClientList entry)
 
+foldMapNodeLists :: Monoid m =>
+  (forall l. NodeList l => l -> m) -> DhtState -> m
+foldMapNodeLists f = getConst . traverseNodeLists (Const . f)
+
 mapNodeLists :: (forall l. NodeList l => l -> l) -> DhtState -> DhtState
 mapNodeLists f = runIdentity . traverseNodeLists (Identity . f)
 
-traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> DhtState -> f DhtState
+traverseClientLists :: Applicative f =>
+  (ClientList -> f ClientList) -> DhtState -> f DhtState
 traverseClientLists f = traverseNodeLists $ ClientList.traverseClientLists f
 
 foldNodes :: (a -> NodeInfo -> a) -> a -> DhtState -> a
@@ -227,6 +234,9 @@ addNode time nodeInfo =
       | NodeInfo.publicKey nodeInfo == ClientList.nodeListBaseKey nodeList =
         nodeList
     addUnlessBase nodeList = ClientList.addNode time nodeInfo nodeList
+
+viable :: NodeInfo -> DhtState -> Bool
+viable nodeInfo = getAll . foldMapNodeLists (All . ClientList.viable nodeInfo)
 
 mapBuckets :: (KBuckets -> KBuckets) -> DhtState -> DhtState
 mapBuckets f dhtState@DhtState { dhtCloseList } =

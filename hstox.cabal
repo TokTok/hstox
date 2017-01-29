@@ -45,6 +45,7 @@ library
     , network                   <= 2.6.2.1
     , network-msgpack-rpc       >= 0.0.3
     , saltine
+    , random
     , tagged
     , text
     , transformers
@@ -101,6 +102,7 @@ library
         Network.Tox.DHT.KBucketsSpec
         Network.Tox.DHT.NodesRequestSpec
         Network.Tox.DHT.NodesResponseSpec
+        Network.Tox.DHT.OperationSpec
         Network.Tox.DHT.PingPacketSpec
         Network.Tox.DHT.RpcPacketSpec
         Network.Tox.DHTSpec

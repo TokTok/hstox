@@ -1,11 +1,12 @@
-{-# LANGUAGE LambdaCase  #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Trustworthy         #-}
 module Network.Tox.DHT.ClientListSpec where
 
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           Control.Monad                 (when)
+import           Control.Monad                 (unless, when)
 import           Data.List                     (sort, sortBy)
 import qualified Data.Map                      as Map
 import           Data.Ord                      (comparing)
@@ -44,6 +45,14 @@ spec = do
         afterAdd1    = ClientList.addNode time nodeInfo afterAdd0
       in
       afterAdd0 `shouldBe` afterAdd1
+
+  it "adding a non-viable node has no effect" $
+    property $ \(clientList::ClientList) time nodeInfo ->
+      let
+        viable   = ClientList.viable nodeInfo clientList
+        afterAdd = ClientList.addNode time nodeInfo clientList
+      in
+      unless viable $ afterAdd `shouldBe` clientList
 
   describe "addNode" $
     it "keeps the k nodes closest to the base key" $

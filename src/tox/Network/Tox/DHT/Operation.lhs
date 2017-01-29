@@ -1,18 +1,22 @@
 \section{DHT Operation}
 
 \begin{code}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE Safe                  #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 module Network.Tox.DHT.Operation where
 
 import           Control.Applicative           ((<$>), (<*>))
+import           Control.Monad.Random          (RandT, evalRandT)
+import           Control.Monad.Random.Class    (MonadRandom, uniform)
+import           Control.Monad.Writer          (MonadWriter, Writer, execWriter,
+                                                runWriter, tell)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
-import Data.Traversable                      (traverse, for)
-import           Control.Monad.Random.Class                      (MonadRandom, uniform)
-import           Control.Monad.Writer    (MonadWriter, tell)
+import           Data.Traversable              (for, traverse)
+import           System.Random                 (StdGen, mkStdGen)
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary, shrink)
 
 import           Network.Tox.Crypto.Key        (PublicKey)
@@ -20,8 +24,6 @@ import           Network.Tox.DHT.ClientList    (ClientList, NodeList)
 import qualified Network.Tox.DHT.ClientList    as ClientList
 import           Network.Tox.DHT.ClientNode    (ClientNode)
 import qualified Network.Tox.DHT.ClientNode    as ClientNode
-import           Network.Tox.DHT.DhtState      (DhtState)
-import qualified Network.Tox.DHT.DhtState      as DhtState
 import           Network.Tox.DHT.DhtState      (DhtState)
 import qualified Network.Tox.DHT.DhtState      as DhtState
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
@@ -54,6 +56,7 @@ data RequestInfo = RequestInfo
   { requestTo     :: NodeInfo
   , requestSearch :: PublicKey
   }
+  deriving (Eq, Read, Show)
 
 randomRequestPeriod :: TimeDiff
 randomRequestPeriod = Time.seconds 20
@@ -68,10 +71,12 @@ randomRequests time dhtState =
     doList nodeList lastTime =
       if time - lastTime < randomRequestPeriod
       then pure lastTime
-      else do
-        node <- uniform $ ClientList.nodeListList nodeList
-        tell $ [RequestInfo node $ ClientList.nodeListBaseKey nodeList]
-        return time
+      else case ClientList.nodeListList nodeList of
+        [] -> return time
+        nodes -> do
+          node <- uniform nodes
+          tell [RequestInfo node $ ClientList.nodeListBaseKey nodeList]
+          return time
   in do
     closeTime' <-
       doList closeList $ DhtState.dhtCloseListLastPeriodicRequest dhtState
@@ -106,18 +111,18 @@ becomes Bad. In the special case that every node in the Close List is Bad, they
 are all pinged once more.)
 
 hs-toxcore implementation of pinging and timeouts:
-On each Client List is stored for each node a Last Pinged timestamp and a Pings
-Counter.  Nodes are added with these set to the current time and 0,
-respectively.  This includes updating an already present node.  Periodically
-pass through the DHT State nodes, and for each which is due a ping: ping it,
-update the timestamp, and increment the counter, and if the counter is then 2
-(configurable constant), remove the node from the list. This is pretty close to
-the behaviour of c-toxcore, but much simpler.
+For each node in the Dht State, a Last Pinged timestamp and a Pings Counter are
+maintained.  Nodes are added with these set to the current time and 0,
+respectively.  This includes updating an already present node.  The DHT State
+nodes are passed through periodically, and for each which is due a ping, we:
+ping it, update the timestamp, increment the counter, and, if the counter is
+then 2 (configurable constant), remove the node from the list. This is pretty
+close to the behaviour of c-toxcore, but much simpler.
 
 \begin{code}
 
-pingInterval :: TimeDiff
-pingInterval = Time.seconds 60
+pingPeriod :: TimeDiff
+pingPeriod = Time.seconds 60
 
 maxPings :: Int
 maxPings = 2
@@ -137,7 +142,7 @@ pingNodes time = DhtState.traverseClientLists pingNodes'
 
         pingNode :: ClientNode -> m (Maybe ClientNode)
         pingNode clientNode =
-          if time - lastPing < pingInterval
+          if time - lastPing < pingPeriod
           then pure $ Just clientNode
           else (tell [requestInfo] *>) . pure $
             if pingCount + 1 < maxPings
@@ -213,6 +218,18 @@ TODO: consider giving min and max values for the constants.
  - :: Tests.
  -
  ------------------------------------------------------------------------------}
+
+runTestOperation :: Monoid w => ArbStdGen -> RandT StdGen (Writer w) a -> (a,w)
+runTestOperation seed = runWriter . (`evalRandT` getStdGen seed)
+execTestOperation :: Monoid w => ArbStdGen -> RandT StdGen (Writer w) a -> w
+execTestOperation seed = execWriter . (`evalRandT` getStdGen seed)
+
+-- | wrap StdGen so the Arbitrary instance isn't an orphan
+newtype ArbStdGen = ArbStdGen { getStdGen :: StdGen }
+  deriving (Read, Show)
+
+instance Arbitrary ArbStdGen
+  where arbitrary = ArbStdGen . mkStdGen <$> arbitrary
 
 \end{code}
 

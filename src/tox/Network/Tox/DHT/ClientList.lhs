@@ -5,8 +5,8 @@
 {-# LANGUAGE Safe           #-}
 module Network.Tox.DHT.ClientList where
 
-import           Control.Applicative           (Const (..), getConst,
-                                                (<$>), (<*>))
+import           Control.Applicative           (Const (..), getConst, (<$>),
+                                                (<*>))
 import           Control.Monad                 (join)
 import           Data.List                     (sort)
 import           Data.Map                      (Map)
@@ -101,7 +101,7 @@ class NodeList l where
 
   removeNode :: PublicKey -> l -> l
 
-  viable :: l -> NodeInfo -> Bool
+  viable :: NodeInfo -> l -> Bool
 
   nodeListBaseKey :: l -> PublicKey
 
@@ -131,7 +131,7 @@ instance NodeList ClientList where
     (`updateClientNodes` clientList) .
       Map.delete . Distance.xorDistance publicKey $ baseKey clientList
 
-  viable ClientList{ baseKey, maxSize, nodes } nodeInfo =
+  viable nodeInfo ClientList{ baseKey, maxSize, nodes } =
     let key = Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey
     in (key `elem`) . take maxSize . sort $ key : Map.keys nodes
 

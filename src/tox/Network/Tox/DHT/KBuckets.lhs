@@ -164,12 +164,12 @@ instance NodeList KBuckets where
   removeNode publicKey kBuckets =
     updateBucketForKey kBuckets publicKey $ ClientList.removeNode publicKey
 
-  viable KBuckets{ baseKey, buckets } nodeInfo =
+  viable nodeInfo KBuckets{ baseKey, buckets } =
     case bucketIndex baseKey $ NodeInfo.publicKey nodeInfo of
       Nothing    -> False
       Just index -> case Map.lookup index buckets of
         Nothing     -> True
-        Just bucket -> ClientList.viable bucket nodeInfo
+        Just bucket -> ClientList.viable nodeInfo bucket
 
   nodeListBaseKey = baseKey
 
