@@ -5,7 +5,8 @@
 {-# LANGUAGE Safe           #-}
 module Network.Tox.DHT.ClientList where
 
-import           Control.Applicative           ((<$>), (<*>))
+import           Control.Applicative           (Const (..), getConst,
+                                                (<$>), (<*>))
 import           Control.Monad                 (join)
 import           Data.List                     (sort)
 import           Data.Map                      (Map)
@@ -105,6 +106,13 @@ class NodeList l where
   nodeListBaseKey :: l -> PublicKey
 
   traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> l -> f l
+
+  -- | copied from Data.Traversable.foldMapDefault
+  foldMapClientLists :: Monoid m => (ClientList -> m) -> l -> m
+  foldMapClientLists f = getConst . traverseClientLists (Const . f)
+
+  nodeListList :: l -> [NodeInfo]
+  nodeListList = foldMapClientLists nodeInfos
 
 instance NodeList ClientList where
   addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =

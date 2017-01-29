@@ -21,7 +21,7 @@ spec = do
   it "the state can never contain itself" $
     property $ \keyPair time nodeInfo ->
       let
-        dhtState = DhtState.empty keyPair
+        dhtState = DhtState.empty time keyPair
         afterAdd = DhtState.addNode time
           nodeInfo { NodeInfo.publicKey = KeyPair.publicKey keyPair }
           dhtState
@@ -32,7 +32,7 @@ spec = do
     it "should result in a different state" $
       property $ \keyPair time nodeInfo ->
         let
-          dhtState = DhtState.empty keyPair
+          dhtState = DhtState.empty time keyPair
           afterAdd = DhtState.addNode time nodeInfo dhtState
         in
         unless (DhtState.containsNode (NodeInfo.publicKey nodeInfo) dhtState) $
@@ -41,7 +41,7 @@ spec = do
     it "and removing it yields the same state" $
       property $ \keyPair time nodeInfo ->
         let
-          dhtState    = DhtState.empty keyPair
+          dhtState    = DhtState.empty time keyPair
           afterAdd    = DhtState.addNode time nodeInfo dhtState
           afterRemove = DhtState.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
         in
@@ -52,7 +52,7 @@ spec = do
     it "and adding it again does not change the state twice" $
       property $ \keyPair time nodeInfo ->
         let
-          dhtState  = DhtState.empty keyPair
+          dhtState  = DhtState.empty time keyPair
           afterAdd1 = DhtState.addNode time nodeInfo dhtState
           afterAdd2 = DhtState.addNode time nodeInfo afterAdd1
         in
@@ -60,36 +60,36 @@ spec = do
 
   describe "adding a search node" $ do
     it "should result in a different state" $
-      property $ \keyPair publicKey ->
+      property $ \keyPair time publicKey ->
         let
-          dhtState = DhtState.empty keyPair
-          afterAdd = DhtState.addSearchKey publicKey dhtState
+          dhtState = DhtState.empty time keyPair
+          afterAdd = DhtState.addSearchKey time publicKey dhtState
         in
         afterAdd `shouldNotBe` dhtState
 
     it "and removing it yields the same state" $
-      property $ \keyPair publicKey ->
+      property $ \keyPair time publicKey ->
         let
-          dhtState    = DhtState.empty keyPair
-          afterAdd    = DhtState.addSearchKey publicKey dhtState
+          dhtState    = DhtState.empty time keyPair
+          afterAdd    = DhtState.addSearchKey time publicKey dhtState
           afterRemove = DhtState.removeSearchKey publicKey afterAdd
         in
         afterRemove `shouldBe` dhtState
 
     it "and adding it again does not change the state twice" $
-      property $ \keyPair publicKey ->
+      property $ \keyPair time publicKey ->
         let
-          dhtState  = DhtState.empty keyPair
-          afterAdd1 = DhtState.addSearchKey publicKey dhtState
-          afterAdd2 = DhtState.addSearchKey publicKey afterAdd1
+          dhtState  = DhtState.empty time keyPair
+          afterAdd1 = DhtState.addSearchKey time publicKey dhtState
+          afterAdd2 = DhtState.addSearchKey time publicKey afterAdd1
         in
         afterAdd1 `shouldBe` afterAdd2
 
     it "and adding a node info for it will not add it to the search entry's Client List" $
       property $ \keyPair time nodeInfo ->
         let
-          dhtState = DhtState.empty keyPair
-          afterAddSearchKey = DhtState.addSearchKey
+          dhtState = DhtState.empty time keyPair
+          afterAddSearchKey = DhtState.addSearchKey time
             (NodeInfo.publicKey nodeInfo)
             dhtState
         in

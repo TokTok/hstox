@@ -52,9 +52,10 @@ Every DHT node contains the following state:
 \begin{code}
 
 data DhtState = DhtState
-  { dhtKeyPair    :: KeyPair
-  , dhtCloseList  :: KBuckets
-  , dhtSearchList :: Map PublicKey DhtSearchEntry
+  { dhtKeyPair                      :: KeyPair
+  , dhtCloseListLastPeriodicRequest :: TimeStamp
+  , dhtCloseList                    :: KBuckets
+  , dhtSearchList                   :: Map PublicKey DhtSearchEntry
   }
   deriving (Eq, Read, Show)
 
@@ -66,9 +67,9 @@ Lists are initialised to be empty.
 
 \begin{code}
 
-empty :: KeyPair -> DhtState
-empty keyPair =
-  DhtState keyPair (KBuckets.empty $ KeyPair.publicKey keyPair) Map.empty
+empty :: TimeStamp -> KeyPair -> DhtState
+empty time keyPair =
+  DhtState keyPair time (KBuckets.empty $ KeyPair.publicKey keyPair) Map.empty
 
 \end{code}
 
@@ -91,8 +92,9 @@ Lists simultaneously.
 \begin{code}
 
 data DhtSearchEntry = DhtSearchEntry
-  { searchNode       :: Maybe NodeInfo
-  , searchClientList :: ClientList
+  { searchNode                :: Maybe NodeInfo
+  , searchLastPeriodicRequest :: TimeStamp
+  , searchClientList          :: ClientList
   }
   deriving (Eq, Read, Show)
 
@@ -106,9 +108,9 @@ Client List is initialised to be empty.
 
 \begin{code}
 
-emptySearchEntry :: PublicKey -> DhtSearchEntry
-emptySearchEntry publicKey =
-  DhtSearchEntry Nothing $ ClientList.empty publicKey searchEntryClientListSize
+emptySearchEntry :: TimeStamp -> PublicKey -> DhtSearchEntry
+emptySearchEntry time publicKey =
+  DhtSearchEntry Nothing time $ ClientList.empty publicKey searchEntryClientListSize
 
 \end{code}
 
@@ -120,12 +122,12 @@ operation has no effect.
 
 \begin{code}
 
-addSearchKey :: PublicKey -> DhtState -> DhtState
-addSearchKey searchKey dhtState@DhtState { dhtSearchList } =
+addSearchKey :: TimeStamp -> PublicKey -> DhtState -> DhtState
+addSearchKey time searchKey dhtState@DhtState { dhtSearchList } =
   dhtState { dhtSearchList = updatedSearchList }
   where
     searchEntry =
-      Map.findWithDefault (emptySearchEntry searchKey) searchKey dhtSearchList
+      Map.findWithDefault (emptySearchEntry time searchKey) searchKey dhtSearchList
     updatedSearchList =
       Map.insert searchKey searchEntry dhtSearchList
 
@@ -279,11 +281,11 @@ containsNode publicKey =
 
 instance Arbitrary DhtState where
   arbitrary =
-    initialise <$> arbitrary <*> arbitrary <*> arbitrary
+    initialise <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
     where
-      initialise :: KeyPair -> [(TimeStamp, NodeInfo)] -> [PublicKey] -> DhtState
-      initialise kp nis =
-        foldl (flip addSearchKey) (foldl (flip $ uncurry addNode) (empty kp) nis)
+      initialise :: TimeStamp -> KeyPair -> [(TimeStamp, NodeInfo)] -> [(TimeStamp, PublicKey)] -> DhtState
+      initialise time kp nis =
+        foldl (flip $ uncurry addSearchKey) (foldl (flip $ uncurry addNode) (empty time kp) nis)
 
   shrink dhtState =
     Maybe.maybeToList shrunkNode ++ Maybe.maybeToList shrunkSearchKey

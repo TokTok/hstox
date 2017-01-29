@@ -2,19 +2,26 @@
 
 \begin{code}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Safe #-}
 module Network.Tox.DHT.Operation where
 
 import           Control.Applicative           ((<$>), (<*>))
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
-import           Control.Monad.Trans.Writer    (Writer, tell)
+import Data.Traversable                      (traverse, for)
+import           Control.Monad.Random.Class                      (MonadRandom, uniform)
+import           Control.Monad.Writer    (MonadWriter, tell)
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary, shrink)
 
 import           Network.Tox.Crypto.Key        (PublicKey)
-import           Network.Tox.DHT.ClientList    (ClientList)
+import           Network.Tox.DHT.ClientList    (ClientList, NodeList)
 import qualified Network.Tox.DHT.ClientList    as ClientList
 import           Network.Tox.DHT.ClientNode    (ClientNode)
 import qualified Network.Tox.DHT.ClientNode    as ClientNode
+import           Network.Tox.DHT.DhtState      (DhtState)
+import qualified Network.Tox.DHT.DhtState      as DhtState
 import           Network.Tox.DHT.DhtState      (DhtState)
 import qualified Network.Tox.DHT.DhtState      as DhtState
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
@@ -42,8 +49,41 @@ easier, as it adds a possible attack vector.
 
 \begin{code}
 
+-- | Information required to send a NodesRequest packet
+data RequestInfo = RequestInfo
+  { requestTo     :: NodeInfo
+  , requestSearch :: PublicKey
+  }
+
 randomRequestPeriod :: TimeDiff
 randomRequestPeriod = Time.seconds 20
+
+randomRequests :: forall m. (MonadRandom m, MonadWriter [RequestInfo] m) =>
+  TimeStamp -> DhtState -> m DhtState
+randomRequests time dhtState =
+  let
+    closeList  = DhtState.dhtCloseList dhtState
+    searchList = DhtState.dhtSearchList dhtState
+    doList :: NodeList l => l -> TimeStamp -> m TimeStamp
+    doList nodeList lastTime =
+      if time - lastTime < randomRequestPeriod
+      then pure lastTime
+      else do
+        node <- uniform $ ClientList.nodeListList nodeList
+        tell $ [RequestInfo node $ ClientList.nodeListBaseKey nodeList]
+        return time
+  in do
+    closeTime' <-
+      doList closeList $ DhtState.dhtCloseListLastPeriodicRequest dhtState
+    search' <- for searchList $ \entry ->
+      (\t -> entry{DhtState.searchLastPeriodicRequest = t}) <$>
+        doList
+          (DhtState.searchClientList entry)
+          (DhtState.searchLastPeriodicRequest entry)
+    pure $ dhtState
+      { DhtState.dhtCloseListLastPeriodicRequest = closeTime'
+      , DhtState.dhtSearchList = search'
+      }
 
 \end{code}
 
@@ -82,15 +122,11 @@ pingInterval = Time.seconds 60
 maxPings :: Int
 maxPings = 2
 
-data RequestInfo = RequestInfo
-  { requestTo     :: NodeInfo
-  , requestSearch :: PublicKey
-  }
-
-pingNodes :: TimeStamp -> DhtState -> Writer [RequestInfo] DhtState
+pingNodes :: forall m. MonadWriter [RequestInfo] m =>
+  TimeStamp -> DhtState -> m DhtState
 pingNodes time = DhtState.traverseClientLists pingNodes'
   where
-    pingNodes' :: ClientList -> Writer [RequestInfo] ClientList
+    pingNodes' :: ClientList -> m ClientList
     pingNodes' clientList =
       (\x -> clientList{ ClientList.nodes = x }) <$>
         traverseMaybe pingNode (ClientList.nodes clientList)
@@ -99,7 +135,7 @@ pingNodes time = DhtState.traverseClientLists pingNodes'
           (a -> f (Maybe b)) -> Map k a -> f (Map k b)
         traverseMaybe f = (Map.mapMaybe id <$>) . traverse f
 
-        pingNode :: ClientNode -> Writer [RequestInfo] (Maybe ClientNode)
+        pingNode :: ClientNode -> m (Maybe ClientNode)
         pingNode clientNode =
           if time - lastPing < pingInterval
           then pure $ Just clientNode
