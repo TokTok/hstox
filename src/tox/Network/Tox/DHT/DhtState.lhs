@@ -7,7 +7,6 @@ module Network.Tox.DHT.DhtState where
 
 import           Control.Applicative           (Const (..), getConst, pure,
                                                 (<$>), (<*>), (<|>))
-import           Control.Monad.Trans.Writer    (Writer)
 import           Data.Functor.Identity         (Identity (..))
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
@@ -178,9 +177,6 @@ foldNodes = foldlClientLists . ClientList.foldNodes
     -- | copied from Data.Foldable.foldl
     foldlClientLists f z t =
       appEndo (getDual (foldMapClientLists (Dual . Endo . flip f) t)) z
-
-pingNodes :: TimeStamp -> DhtState -> Writer [(NodeInfo, PublicKey)] DhtState
-pingNodes time = traverseClientLists $ ClientList.pingNodes time
 
 \end{code}
 

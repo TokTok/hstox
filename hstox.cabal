@@ -65,6 +65,7 @@ library
       Network.Tox.DHT.KBuckets
       Network.Tox.DHT.NodesRequest
       Network.Tox.DHT.NodesResponse
+      Network.Tox.DHT.Operation
       Network.Tox.DHT.PingPacket
       Network.Tox.DHT.RpcPacket
       Network.Tox.Encoding

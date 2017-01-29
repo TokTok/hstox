@@ -7,7 +7,6 @@ module Network.Tox.DHT.ClientList where
 
 import           Control.Applicative           ((<$>), (<*>))
 import           Control.Monad                 (join)
-import           Control.Monad.Trans.Writer    (Writer, tell)
 import           Data.List                     (sort)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
@@ -142,30 +141,6 @@ is the furthest away in terms of the distance metric.
 
 foldNodes :: (a -> NodeInfo -> a) -> a -> ClientList -> a
 foldNodes f x = foldl f x . nodeInfos
-
-
-pingInterval :: TimeDiff
-pingInterval = Time.seconds 60
-
-maxPings :: Int
-maxPings = 2
-
-pingNodes :: TimeStamp -> ClientList -> Writer [(NodeInfo, PublicKey)] ClientList
-pingNodes time clientList@ClientList{ nodes } =
-  (\x -> clientList{ nodes = x }) <$> traverseMaybe pingNode nodes
-  where
-    traverseMaybe :: Applicative f =>
-        (a -> f (Maybe b)) -> Map.Map k a -> f (Map.Map k b)
-    traverseMaybe f = (Map.mapMaybe id <$>) . traverse f
-    pingNode :: ClientNode -> Writer [(NodeInfo, PublicKey)] (Maybe ClientNode)
-    pingNode clientNode@ClientNode{ nodeInfo, lastPing, pingCount } =
-      if time - lastPing < pingInterval
-      then pure $ Just clientNode
-      else (tell [requestInfo] *>) . pure $
-        if pingCount + 1 < maxPings
-        then Just $ clientNode{ lastPing = time, pingCount = pingCount + 1 }
-        else Nothing
-      where requestInfo = (nodeInfo, baseKey clientList)
 
 {-------------------------------------------------------------------------------
  -
