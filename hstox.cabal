@@ -58,6 +58,7 @@ library
       Network.Tox.Crypto.Nonce
       Network.Tox.DHT
       Network.Tox.DHT.ClientList
+      Network.Tox.DHT.ClientNode
       Network.Tox.DHT.DhtPacket
       Network.Tox.DHT.DhtState
       Network.Tox.DHT.Distance

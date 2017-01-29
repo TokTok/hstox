@@ -17,6 +17,8 @@ import           Test.QuickCheck.Gen           (Gen)
 import qualified Test.QuickCheck.Gen           as Gen
 
 import           Network.Tox.Crypto.Key        (PublicKey)
+import           Network.Tox.DHT.ClientNode    (ClientNode)
+import qualified Network.Tox.DHT.ClientNode    as ClientNode
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
@@ -52,18 +54,8 @@ data ClientList = ClientList
 
 type ClientNodes = Map Distance.Distance ClientNode
 
-data ClientNode = ClientNode
-  { nodeInfo  :: NodeInfo
-  , lastPing  :: TimeStamp
-  , pingCount :: Int
-  }
-  deriving (Eq, Read, Show)
-
-newNode :: TimeStamp -> NodeInfo -> ClientNode
-newNode time node = ClientNode node time 0
-
 nodeInfos :: ClientList -> [NodeInfo]
-nodeInfos = map nodeInfo . Map.elems . nodes
+nodeInfos = map ClientNode.nodeInfo . Map.elems . nodes
 
 empty :: PublicKey -> Int -> ClientList
 empty publicKey size = ClientList
@@ -81,7 +73,7 @@ updateClientNodes f clientList@ClientList{ nodes } =
 
 lookup :: PublicKey -> ClientList -> Maybe NodeInfo
 lookup publicKey _cl@ClientList{ baseKey, nodes } =
-  nodeInfo <$> Distance.xorDistance publicKey baseKey `Map.lookup` nodes
+  ClientNode.nodeInfo <$> Distance.xorDistance publicKey baseKey `Map.lookup` nodes
 
 \end{code}
 
@@ -121,7 +113,7 @@ instance NodeList ClientList where
       mapTake maxSize
       . Map.insert
         (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
-        (newNode time nodeInfo)
+        (ClientNode.newNode time nodeInfo)
     where
       -- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it
       -- for compatibility with older versions.
@@ -189,7 +181,4 @@ genClientList publicKey size =
 
 instance Arbitrary ClientList where
   arbitrary = join $ genClientList <$> arbitrary <*> arbitrarySizedNatural
-
-instance Arbitrary ClientNode where
-  arbitrary = ClientNode <$> arbitrary <*> arbitrary <*> arbitrary
 \end{code}
