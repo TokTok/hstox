@@ -63,14 +63,14 @@ Protocol is used to send TCP relay information and the DHT is UDP only.
 \subsection{Periodic sending of Nodes Requests}
 
 For each Nodes List in the DHT State, every 20 seconds a Nodes Request is sent
-to a random node on the list, searching for the target of the list.
+to a random node on the list, searching for the base key of the list.
 
 Random nodes are chosen since being able to predict which node a node will
 send a request to next could make some attacks that disrupt the network
 easier, as it adds a possible attack vector.
 
 Furthermore, for each Nodes List in the DHT State, each node on the list is
-sent a Nodes Request every 60 seconds, searching for the target of the list.
+sent a Nodes Request every 60 seconds, searching for the base key of the list.
 
 (c-toxcore's implementation: a Last Pinged time is maintained for each
 node in each list. When a node is added to a list, if doing so evicts a node
@@ -105,11 +105,11 @@ node from which the response was sent it is added to the state; see the
 k-Buckets and Client List specs for details on this operation. Secondly, for
 each node listed in the response and for each Nodes List in the DHT State to
 which the node is viable for entry, a Nodes Request is sent to the node with
-the requested public key being the target of the Nodes List.
+the requested public key being the base key of the Nodes List.
 
 An implementation may choose not to send every such Nodes Request.
 (c-toxcore only sends only so many per list (8 for the Close List, 4 for a
-Search Entry) per call to Do_DHT(), prioritising the closest to the target).
+Search Entry) per call to Do_DHT(), prioritising the closest to the base key).
 
 \subsection{Handling Nodes Request packets}
 On receiving a Nodes Request packet, the 4 nodes in the DHT State which are

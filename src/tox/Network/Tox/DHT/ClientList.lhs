@@ -8,6 +8,7 @@ module Network.Tox.DHT.ClientList where
 import           Control.Applicative           ((<$>), (<*>))
 import           Control.Monad                 (join)
 import           Control.Monad.Trans.Writer    (Writer, tell)
+import           Data.List                     (sort)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary,
@@ -103,23 +104,41 @@ same effect as removing it once.
 
 \begin{code}
 
-addNode :: TimeStamp -> NodeInfo -> ClientList -> ClientList
-addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =
-  (`updateClientNodes` clientList) $
-    mapTake maxSize
-    . Map.insert
-      (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
-      (newNode time nodeInfo)
+class NodeList l where
+  addNode :: TimeStamp -> NodeInfo -> l -> l
 
-removeNode :: PublicKey -> ClientList -> ClientList
-removeNode publicKey clientList =
-  (`updateClientNodes` clientList) $
-    Map.delete $ Distance.xorDistance publicKey $ baseKey clientList
+  removeNode :: PublicKey -> l -> l
 
--- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it for
--- compatibility with older versions.
-mapTake :: Int -> Map k a -> Map k a
-mapTake n = Map.fromDistinctAscList . take n . Map.toAscList
+  viable :: l -> NodeInfo -> Bool
+
+  nodeListBaseKey :: l -> PublicKey
+
+  traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> l -> f l
+
+instance NodeList ClientList where
+  addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =
+    (`updateClientNodes` clientList) $
+      mapTake maxSize
+      . Map.insert
+        (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
+        (newNode time nodeInfo)
+    where
+      -- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it
+      -- for compatibility with older versions.
+      mapTake :: Int -> Map k a -> Map k a
+      mapTake n = Map.fromDistinctAscList . take n . Map.toAscList
+
+  removeNode publicKey clientList =
+    (`updateClientNodes` clientList) .
+      Map.delete . Distance.xorDistance publicKey $ baseKey clientList
+
+  viable ClientList{ baseKey, maxSize, nodes } nodeInfo =
+    let key = Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey
+    in (key `elem`) . take maxSize . sort $ key : Map.keys nodes
+
+  nodeListBaseKey = baseKey
+
+  traverseClientLists = id
 
 \end{code}
 

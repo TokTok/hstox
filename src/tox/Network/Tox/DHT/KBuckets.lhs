@@ -12,18 +12,20 @@ module Network.Tox.DHT.KBuckets where
 
 import           Control.Applicative           ((<$>))
 import           Data.Binary                   (Binary)
-import           Data.Foldable                 (maximumBy)
+import           Data.Foldable                 (maximumBy, toList)
 import           Data.List                     (sort)
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
 import           Data.Ord                      (comparing)
+import           Data.Traversable              (Traversable, mapAccumR,
+                                                traverse)
 import           Data.Word                     (Word8)
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary)
 import           Test.QuickCheck.Gen           (Gen)
 import qualified Test.QuickCheck.Gen           as Gen
 
 import           Network.Tox.Crypto.Key        (PublicKey)
-import           Network.Tox.DHT.ClientList    (ClientList)
+import           Network.Tox.DHT.ClientList    (ClientList, NodeList)
 import qualified Network.Tox.DHT.ClientList    as ClientList
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
@@ -61,14 +63,6 @@ defaultBucketSize = 8
 
 empty :: PublicKey -> KBuckets
 empty = KBuckets defaultBucketSize Map.empty
-
-
--- | note that this traverses in the opposite direction from the "iteration
--- order" defined below. TODO: either find an efficient way to reverse the
--- order, or (neater) use a key for buckets which is ordered the right way.
-traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> KBuckets -> f KBuckets
-traverseClientLists f kBuckets@KBuckets{ buckets } =
-  (\x -> kBuckets{ buckets = x }) <$> traverse f buckets
 
 \end{code}
 
@@ -161,17 +155,23 @@ for entry to the corresponding bucket.
 
 \begin{code}
 
+instance NodeList KBuckets where
+  addNode time nodeInfo kBuckets =
+    updateBucketForKey kBuckets publicKey $ ClientList.addNode time nodeInfo
+    where
+      publicKey = NodeInfo.publicKey nodeInfo
 
-addNode :: TimeStamp -> NodeInfo -> KBuckets -> KBuckets
-addNode time nodeInfo kBuckets =
-  updateBucketForKey kBuckets publicKey $ ClientList.addNode time nodeInfo
-  where
-    publicKey = NodeInfo.publicKey nodeInfo
+  removeNode publicKey kBuckets =
+    updateBucketForKey kBuckets publicKey $ ClientList.removeNode publicKey
 
+  viable KBuckets{ baseKey, buckets } nodeInfo =
+    case bucketIndex baseKey $ NodeInfo.publicKey nodeInfo of
+      Nothing    -> False
+      Just index -> case Map.lookup index buckets of
+        Nothing     -> True
+        Just bucket -> ClientList.viable bucket nodeInfo
 
-removeNode :: PublicKey -> KBuckets -> KBuckets
-removeNode publicKey kBuckets =
-  updateBucketForKey kBuckets publicKey $ ClientList.removeNode publicKey
+  nodeListBaseKey = baseKey
 
 \end{code}
 
@@ -180,6 +180,12 @@ key.  I.e. the first node seen in iteration is the closest, and the last node
 is the furthest away in terms of the distance metric.
 
 \begin{code}
+
+  traverseClientLists f kBuckets@KBuckets{ buckets } =
+    (\x -> kBuckets{ buckets = x }) <$> traverse f (reverseT buckets)
+    where
+      reverseT :: (Traversable t) => t a -> t a
+      reverseT t = snd (mapAccumR (\ (x:xs) _ -> (xs, x)) (toList t) t)
 
 foldNodes :: (a -> NodeInfo -> a) -> a -> KBuckets -> a
 foldNodes f x =
@@ -202,7 +208,7 @@ getAllNodes =
 
 genKBuckets :: PublicKey -> Gen KBuckets
 genKBuckets publicKey =
-  foldl (flip $ uncurry addNode) (empty publicKey) <$> Gen.listOf arbitrary
+  foldl (flip $ uncurry ClientList.addNode) (empty publicKey) <$> Gen.listOf arbitrary
 
 
 instance Arbitrary KBuckets where

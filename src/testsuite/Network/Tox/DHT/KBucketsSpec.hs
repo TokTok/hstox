@@ -37,7 +37,7 @@ spec = do
 
   it "does not accept adding a NodeInfo with the baseKey as publicKey" $
     property $ \kBuckets time nodeInfo ->
-      KBuckets.addNode time nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
+      ClientList.addNode time nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
         `shouldBe`
         kBuckets
 
@@ -45,7 +45,7 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty = KBuckets.empty baseKey
-        kBuckets = KBuckets.addNode time nodeInfo empty
+        kBuckets = ClientList.addNode time nodeInfo empty
       in
       if baseKey == NodeInfo.publicKey nodeInfo
       then kBuckets `shouldBe` empty
@@ -55,9 +55,9 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd     = KBuckets.addNode time nodeInfo empty
-        afterRemove0 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
-        afterRemove1 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
+        afterAdd     = ClientList.addNode time nodeInfo empty
+        afterRemove0 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
+        afterRemove1 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
       in
       afterRemove0 `shouldBe` afterRemove1
 
@@ -65,8 +65,8 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd0    = KBuckets.addNode time nodeInfo empty
-        afterAdd1    = KBuckets.addNode time nodeInfo afterAdd0
+        afterAdd0    = ClientList.addNode time nodeInfo empty
+        afterAdd1    = ClientList.addNode time nodeInfo afterAdd0
       in
       afterAdd0 `shouldBe` afterAdd1
 
