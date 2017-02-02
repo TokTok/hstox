@@ -17,6 +17,7 @@ import qualified Network.Tox.DHT.ClientList    as ClientList
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.DHT.KBuckets      (KBuckets)
 import qualified Network.Tox.DHT.KBuckets      as KBuckets
+import qualified Network.Tox.DHT.NodeList      as NodeList
 import           Network.Tox.EncodingSpec
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
@@ -38,7 +39,7 @@ spec = do
 
   it "does not accept adding a NodeInfo with the baseKey as publicKey" $
     property $ \kBuckets time nodeInfo ->
-      ClientList.addNode time nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
+      KBuckets.addNode time nodeInfo { NodeInfo.publicKey = KBuckets.baseKey kBuckets } kBuckets
         `shouldBe`
         kBuckets
 
@@ -46,7 +47,7 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty = KBuckets.empty baseKey
-        kBuckets = ClientList.addNode time nodeInfo empty
+        kBuckets = KBuckets.addNode time nodeInfo empty
       in
       if baseKey == NodeInfo.publicKey nodeInfo
       then kBuckets `shouldBe` empty
@@ -56,9 +57,9 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd     = ClientList.addNode time nodeInfo empty
-        afterRemove0 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
-        afterRemove1 = ClientList.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
+        afterAdd     = KBuckets.addNode time nodeInfo empty
+        afterRemove0 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterAdd
+        afterRemove1 = KBuckets.removeNode (NodeInfo.publicKey nodeInfo) afterRemove0
       in
       afterRemove0 `shouldBe` afterRemove1
 
@@ -66,16 +67,16 @@ spec = do
     property $ \baseKey time nodeInfo ->
       let
         empty        = KBuckets.empty baseKey
-        afterAdd0    = ClientList.addNode time nodeInfo empty
-        afterAdd1    = ClientList.addNode time nodeInfo afterAdd0
+        afterAdd0    = KBuckets.addNode time nodeInfo empty
+        afterAdd1    = KBuckets.addNode time nodeInfo afterAdd0
       in
       afterAdd0 `shouldBe` afterAdd1
 
   it "adding a non-viable node has no effect" $
     property $ \(kBuckets::KBuckets) time nodeInfo ->
       let
-        viable   = ClientList.viable nodeInfo kBuckets
-        afterAdd = ClientList.addNode time nodeInfo kBuckets
+        viable   = KBuckets.viable nodeInfo kBuckets
+        afterAdd = KBuckets.addNode time nodeInfo kBuckets
       in
       unless viable $ afterAdd `shouldBe` kBuckets
 
@@ -131,7 +132,7 @@ spec = do
     it "iterates over nodes in order of distance from the base key" $
       property $ \kBuckets ->
         let
-          nodes             = reverse $ KBuckets.foldNodes (flip (:)) [] kBuckets
+          nodes             = reverse $ NodeList.foldNodes (flip (:)) [] kBuckets
           nodeDistance node = Distance.xorDistance (KBuckets.baseKey kBuckets) (NodeInfo.publicKey node)
         in
           nodes `shouldBe` sortBy (comparing nodeDistance) nodes

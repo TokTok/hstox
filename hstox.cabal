@@ -66,6 +66,7 @@ library
       Network.Tox.DHT.DhtState
       Network.Tox.DHT.Distance
       Network.Tox.DHT.KBuckets
+      Network.Tox.DHT.NodeList
       Network.Tox.DHT.NodesRequest
       Network.Tox.DHT.NodesResponse
       Network.Tox.DHT.Operation

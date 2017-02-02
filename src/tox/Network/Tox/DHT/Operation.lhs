@@ -20,12 +20,14 @@ import           System.Random                 (StdGen, mkStdGen)
 import           Test.QuickCheck.Arbitrary     (Arbitrary, arbitrary, shrink)
 
 import           Network.Tox.Crypto.Key        (PublicKey)
-import           Network.Tox.DHT.ClientList    (ClientList, NodeList)
+import           Network.Tox.DHT.ClientList    (ClientList)
 import qualified Network.Tox.DHT.ClientList    as ClientList
 import           Network.Tox.DHT.ClientNode    (ClientNode)
 import qualified Network.Tox.DHT.ClientNode    as ClientNode
 import           Network.Tox.DHT.DhtState      (DhtState)
 import qualified Network.Tox.DHT.DhtState      as DhtState
+import           Network.Tox.DHT.NodeList      (NodeList)
+import qualified Network.Tox.DHT.NodeList      as NodeList
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
 import           Network.Tox.Time              (TimeDiff, TimeStamp)
@@ -71,11 +73,11 @@ randomRequests time dhtState =
     doList nodeList lastTime =
       if time - lastTime < randomRequestPeriod
       then pure lastTime
-      else case ClientList.nodeListList nodeList of
+      else case NodeList.nodeListList nodeList of
         [] -> return time
         nodes -> do
           node <- uniform nodes
-          tell [RequestInfo node $ ClientList.nodeListBaseKey nodeList]
+          tell [RequestInfo node $ NodeList.baseKey nodeList]
           return time
   in do
     closeTime' <-
@@ -155,7 +157,7 @@ pingNodes time = DhtState.traverseClientLists pingNodes'
             nodeInfo = ClientNode.nodeInfo clientNode
             lastPing = ClientNode.lastPing clientNode
             pingCount = ClientNode.pingCount clientNode
-            requestInfo = RequestInfo nodeInfo $ ClientList.baseKey clientList
+            requestInfo = RequestInfo nodeInfo $ NodeList.baseKey clientList
 
 \end{code}
 

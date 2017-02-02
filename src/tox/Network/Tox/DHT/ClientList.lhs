@@ -96,48 +96,29 @@ same effect as removing it once.
 
 \begin{code}
 
-class NodeList l where
-  addNode :: TimeStamp -> NodeInfo -> l -> l
+addNode :: TimeStamp -> NodeInfo -> ClientList -> ClientList
+addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =
+  (`updateClientNodes` clientList) $
+    mapTake maxSize
+    . Map.insert
+      (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
+      (ClientNode.newNode time nodeInfo)
+  where
+    -- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it
+    -- for compatibility with older versions.
+    mapTake :: Int -> Map k a -> Map k a
+    mapTake n = Map.fromDistinctAscList . take n . Map.toAscList
 
-  removeNode :: PublicKey -> l -> l
 
-  viable :: NodeInfo -> l -> Bool
+removeNode :: PublicKey -> ClientList -> ClientList
+removeNode publicKey clientList =
+  (`updateClientNodes` clientList) .
+    Map.delete . Distance.xorDistance publicKey $ baseKey clientList
 
-  nodeListBaseKey :: l -> PublicKey
-
-  traverseClientLists :: Applicative f => (ClientList -> f ClientList) -> l -> f l
-
-  -- | copied from Data.Traversable.foldMapDefault
-  foldMapClientLists :: Monoid m => (ClientList -> m) -> l -> m
-  foldMapClientLists f = getConst . traverseClientLists (Const . f)
-
-  nodeListList :: l -> [NodeInfo]
-  nodeListList = foldMapClientLists nodeInfos
-
-instance NodeList ClientList where
-  addNode time nodeInfo clientList@ClientList{ baseKey, maxSize } =
-    (`updateClientNodes` clientList) $
-      mapTake maxSize
-      . Map.insert
-        (Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey)
-        (ClientNode.newNode time nodeInfo)
-    where
-      -- | 'mapTake' is 'Data.Map.take' in >=containers-0.5.8, but we define it
-      -- for compatibility with older versions.
-      mapTake :: Int -> Map k a -> Map k a
-      mapTake n = Map.fromDistinctAscList . take n . Map.toAscList
-
-  removeNode publicKey clientList =
-    (`updateClientNodes` clientList) .
-      Map.delete . Distance.xorDistance publicKey $ baseKey clientList
-
-  viable nodeInfo ClientList{ baseKey, maxSize, nodes } =
-    let key = Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey
-    in (key `elem`) . take maxSize . sort $ key : Map.keys nodes
-
-  nodeListBaseKey = baseKey
-
-  traverseClientLists = id
+viable :: NodeInfo -> ClientList -> Bool
+viable nodeInfo ClientList{ baseKey, maxSize, nodes } =
+  let key = Distance.xorDistance (NodeInfo.publicKey nodeInfo) baseKey
+  in (key `elem`) . take maxSize . sort $ key : Map.keys nodes
 
 \end{code}
 

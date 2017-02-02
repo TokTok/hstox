@@ -25,7 +25,7 @@ import           Test.QuickCheck.Gen           (Gen)
 import qualified Test.QuickCheck.Gen           as Gen
 
 import           Network.Tox.Crypto.Key        (PublicKey)
-import           Network.Tox.DHT.ClientList    (ClientList, NodeList)
+import           Network.Tox.DHT.ClientList    (ClientList)
 import qualified Network.Tox.DHT.ClientList    as ClientList
 import qualified Network.Tox.DHT.Distance      as Distance
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
@@ -155,23 +155,23 @@ for entry to the corresponding bucket.
 
 \begin{code}
 
-instance NodeList KBuckets where
-  addNode time nodeInfo kBuckets =
-    updateBucketForKey kBuckets publicKey $ ClientList.addNode time nodeInfo
-    where
-      publicKey = NodeInfo.publicKey nodeInfo
+addNode :: TimeStamp -> NodeInfo -> KBuckets -> KBuckets
+addNode time nodeInfo kBuckets =
+  updateBucketForKey kBuckets publicKey $ ClientList.addNode time nodeInfo
+  where
+    publicKey = NodeInfo.publicKey nodeInfo
 
-  removeNode publicKey kBuckets =
-    updateBucketForKey kBuckets publicKey $ ClientList.removeNode publicKey
+removeNode :: PublicKey -> KBuckets -> KBuckets
+removeNode publicKey kBuckets =
+  updateBucketForKey kBuckets publicKey $ ClientList.removeNode publicKey
 
-  viable nodeInfo KBuckets{ baseKey, buckets } =
-    case bucketIndex baseKey $ NodeInfo.publicKey nodeInfo of
-      Nothing    -> False
-      Just index -> case Map.lookup index buckets of
-        Nothing     -> True
-        Just bucket -> ClientList.viable nodeInfo bucket
-
-  nodeListBaseKey = baseKey
+viable :: NodeInfo -> KBuckets -> Bool
+viable nodeInfo KBuckets{ baseKey, buckets } =
+  case bucketIndex baseKey $ NodeInfo.publicKey nodeInfo of
+    Nothing    -> False
+    Just index -> case Map.lookup index buckets of
+      Nothing     -> True
+      Just bucket -> ClientList.viable nodeInfo bucket
 
 \end{code}
 
@@ -181,18 +181,13 @@ is the furthest away in terms of the distance metric.
 
 \begin{code}
 
-  traverseClientLists f kBuckets@KBuckets{ buckets } =
-    (\x -> kBuckets{ buckets = x }) <$> traverse f (reverseT buckets)
-    where
-      reverseT :: (Traversable t) => t a -> t a
-      reverseT t = snd (mapAccumR (\ (x:xs) _ -> (xs, x)) (toList t) t)
-
-foldNodes :: (a -> NodeInfo -> a) -> a -> KBuckets -> a
-foldNodes f x =
-  foldl f x
-  . concatMap ClientList.nodeInfos
-  . reverse . Map.elems . buckets
-
+traverseClientLists ::
+    Applicative f => (ClientList -> f ClientList) -> KBuckets -> f KBuckets
+traverseClientLists f kBuckets@KBuckets{ buckets } =
+  (\x -> kBuckets{ buckets = x }) <$> traverse f (reverseT buckets)
+  where
+    reverseT :: (Traversable t) => t a -> t a
+    reverseT t = snd (mapAccumR (\ (x:xs) _ -> (xs, x)) (toList t) t)
 
 {-------------------------------------------------------------------------------
  -
@@ -208,7 +203,7 @@ getAllNodes =
 
 genKBuckets :: PublicKey -> Gen KBuckets
 genKBuckets publicKey =
-  foldl (flip $ uncurry ClientList.addNode) (empty publicKey) <$> Gen.listOf arbitrary
+  foldl (flip $ uncurry addNode) (empty publicKey) <$> Gen.listOf arbitrary
 
 
 instance Arbitrary KBuckets where
