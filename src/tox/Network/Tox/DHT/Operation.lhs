@@ -30,7 +30,7 @@ import           Network.Tox.DHT.NodeList      (NodeList)
 import qualified Network.Tox.DHT.NodeList      as NodeList
 import           Network.Tox.NodeInfo.NodeInfo (NodeInfo)
 import qualified Network.Tox.NodeInfo.NodeInfo as NodeInfo
-import           Network.Tox.Time              (TimeDiff, TimeStamp)
+import           Network.Tox.Time              (TimeDiff, Timestamp)
 import qualified Network.Tox.Time              as Time
 
 
@@ -64,12 +64,12 @@ randomRequestPeriod :: TimeDiff
 randomRequestPeriod = Time.seconds 20
 
 randomRequests :: forall m. (MonadRandom m, MonadWriter [RequestInfo] m) =>
-  TimeStamp -> DhtState -> m DhtState
+  Timestamp -> DhtState -> m DhtState
 randomRequests time dhtState =
   let
     closeList  = DhtState.dhtCloseList dhtState
     searchList = DhtState.dhtSearchList dhtState
-    doList :: NodeList l => l -> TimeStamp -> m TimeStamp
+    doList :: NodeList l => l -> Timestamp -> m Timestamp
     doList nodeList lastTime =
       if time Time.- lastTime < randomRequestPeriod
       then pure lastTime
@@ -130,7 +130,7 @@ maxPings :: Int
 maxPings = 2
 
 pingNodes :: forall m. MonadWriter [RequestInfo] m =>
-  TimeStamp -> DhtState -> m DhtState
+  Timestamp -> DhtState -> m DhtState
 pingNodes time = DhtState.traverseClientLists pingNodes'
   where
     pingNodes' :: ClientList -> m ClientList
