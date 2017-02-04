@@ -160,7 +160,7 @@ iteration order in the corresponding specification.
 
 traverseNodeLists :: Applicative f =>
   (forall l. NodeList l => l -> f l) -> DhtState -> f DhtState
-traverseNodeLists f dhtState@DhtState{ dhtCloseList, dhtSearchList }  =
+traverseNodeLists f dhtState@DhtState{ dhtCloseList, dhtSearchList } =
   (\close' search' ->
       dhtState{ dhtCloseList = close', dhtSearchList = search' }) <$>
     f dhtCloseList <*>
@@ -246,13 +246,13 @@ instance NodeList DhtState where
 mapBuckets :: (KBuckets -> KBuckets) -> DhtState -> DhtState
 mapBuckets f dhtState@DhtState { dhtCloseList } =
   dhtState
-    { dhtCloseList  = f dhtCloseList
+    { dhtCloseList = f dhtCloseList
     }
 
 mapSearchEntry :: (DhtSearchEntry -> DhtSearchEntry) -> DhtState -> DhtState
 mapSearchEntry f dhtState@DhtState { dhtSearchList } =
   dhtState
-    { dhtSearchList  = Map.map f dhtSearchList
+    { dhtSearchList = Map.map f dhtSearchList
     }
 
 mapSearchClientLists :: (ClientList -> ClientList) -> DhtState -> DhtState
