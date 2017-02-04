@@ -2,7 +2,9 @@
 {-# LANGUAGE Safe #-}
 module Network.Tox.Time where
 
--- Stub module, awaiting a proper event loop architecture
+import           Data.Monoid               (Monoid, mappend, mempty)
+import qualified System.Clock              as Clock
+import           Test.QuickCheck.Arbitrary (Arbitrary, arbitrary)
 
 {-------------------------------------------------------------------------------
  -
@@ -10,13 +12,32 @@ module Network.Tox.Time where
  -
  ------------------------------------------------------------------------------}
 
--- | TODO
-type TimeStamp = Integer
-type TimeDiff = Integer
+newtype TimeStamp = TimeStamp Clock.TimeSpec
+  deriving (Eq, Ord, Show, Read)
 
--- | TODO
+newtype TimeDiff = TimeDiff Clock.TimeSpec
+  deriving (Eq, Ord, Show, Read)
+
+instance Num TimeDiff where
+  TimeDiff t + TimeDiff t' = TimeDiff $ t Prelude.+ t'
+  TimeDiff t - TimeDiff t' = TimeDiff $ t Prelude.- t'
+  TimeDiff t * TimeDiff t' = TimeDiff $ t * t'
+  negate (TimeDiff t) = TimeDiff $ negate t
+  abs (TimeDiff t) = TimeDiff $ abs t
+  signum (TimeDiff t) = TimeDiff $ signum t
+  fromInteger = TimeDiff . fromInteger
+
 seconds :: Integer -> TimeDiff
-seconds = id
+seconds s = TimeDiff $ Clock.TimeSpec (fromIntegral s) 0
+
+getTime :: IO TimeStamp
+getTime = TimeStamp <$> Clock.getTime Clock.Monotonic
+
+(-) :: TimeStamp -> TimeStamp -> TimeDiff
+TimeStamp t - TimeStamp t' = TimeDiff $ t Prelude.- t'
+
+(+) :: TimeStamp -> TimeDiff -> TimeStamp
+TimeStamp t + TimeDiff t' = TimeStamp $ t Prelude.+ t'
 
 
 {-------------------------------------------------------------------------------
@@ -25,4 +46,9 @@ seconds = id
  -
  ------------------------------------------------------------------------------}
 
+instance Arbitrary TimeStamp
+  where arbitrary = (TimeStamp <$>) $ Clock.TimeSpec <$> arbitrary <*> arbitrary
+
+instance Arbitrary TimeDiff
+  where arbitrary = (TimeDiff <$>) $ Clock.TimeSpec <$> arbitrary <*> arbitrary
 \end{code}

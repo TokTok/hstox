@@ -34,6 +34,7 @@ library
     , binary
     , binary-bits
     , bytestring
+    , clock                     >= 0.3
     , containers
     , data-msgpack
     , integer-gmp

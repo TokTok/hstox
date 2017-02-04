@@ -71,7 +71,7 @@ randomRequests time dhtState =
     searchList = DhtState.dhtSearchList dhtState
     doList :: NodeList l => l -> TimeStamp -> m TimeStamp
     doList nodeList lastTime =
-      if time - lastTime < randomRequestPeriod
+      if time Time.- lastTime < randomRequestPeriod
       then pure lastTime
       else case NodeList.nodeListList nodeList of
         [] -> return time
@@ -144,7 +144,7 @@ pingNodes time = DhtState.traverseClientLists pingNodes'
 
         pingNode :: ClientNode -> m (Maybe ClientNode)
         pingNode clientNode =
-          if time - lastPing < pingPeriod
+          if time Time.- lastPing < pingPeriod
           then pure $ Just clientNode
           else (tell [requestInfo] *>) . pure $
             if pingCount + 1 < maxPings
