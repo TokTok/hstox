@@ -1775,29 +1775,42 @@ other.  The title response is also straightforward.
 Both the maximum length of groupchat peer names and the groupchat title is 128
 bytes.  This is the same maximum length as names in all of toxcore.
 
-When a peer receives the peer response packet(s), they will add each of the
+When a peer receives a peer response packet(s), they will add each of the
 received peers to their groupchat peer list, find the 4 closest peers to them
 and create groupchat connections to them as was explained previously.
 
-To find their own peer number, the peer will find themselves in the list of
-received peers and use the peer number assigned to them as their own.
+If the peer does not yet know their own peer number, as is the case if they
+have just accepted an invitation, the peer will find themselves in the list of
+received peers and use the peer number assigned to them as their own. They are
+then able to send messages and invite other peers to the groupchat. They
+immediately send a name message to announce their name to the group.
 
 Message packets are used to send messages to all peers in the groupchat.  To
 send a message packet, a peer will first take their peer number and the message
 they want to send.  Each message packet sent will have a message number that is
 equal to the last message number sent + 1.  Like all other numbers (group chat
 number, peer number) in the packet, the message number in the packet will be in
-big endian format.  When a Message packet is received, the peer receiving it
-will take the message number in the packet and see if it is bigger than the one
-it has saved for the peer with peer number.  If this is the first Message
-packet being received for this peer then this check is omitted.  The message
-number is used to know if a Message packet was already received and relayed to
-prevent packets from looping around the groupchat.  If the message number check
-says that the packet was already received, then the packet is discarded.  If it
-was not already received, a Message packet with the message is sent (relayed)
-to all current group connections (including temporary invited groupchat
-connections) except the one that it was received from.  The only thing that
-should change in the Message packet as it is relayed is the group number.
+big endian format.
+
+When a Message packet is received, the peer receiving it will first check that
+the peer number of the sender is in their peer list. If not, the peer ignores
+the message but sends a peer query packet to the peer the packet was directly
+received from. That peer should have the message sender in their peer list,
+and so will send the sender's peer info back in a peer response.
+
+If the sender is in the receiver's peer list, the receiver now checks whether
+they have already seen a message with the same sender and message number. This
+is achieved by storing the 8 greatest message numbers received from a given
+sender peer number. If the message has lesser message number than any of those
+8, it is assumed to have been received. If the message has already been
+received according to this check, or if it is a name or title message and
+another message of the same type from the same sender with a greater message
+number has been received, then the packet is discarded. Otherwise, the
+message is processed as described below, and a Message packet with the message
+is sent (relayed) to all current group connections (including temporary
+invited groupchat connections) except the one that it was received from.  The
+only thing that should change in the Message packet as it is relayed is the
+group number.
 
 Lossy message packets are used to send audio packets to others in audio group
 chats.  Lossy packets work the same way as normal relayed groupchat messages in
